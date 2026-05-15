@@ -21,10 +21,6 @@ const MODELS = [
   { id: 'gemini-2.5-pro', name: 'Gemini 2.5 Pro', provider: 'google', tag: 'Free' },
 
   // GitHub Models - OpenAI
-  { id: 'openai/gpt-5', name: 'GPT-5', provider: 'github', tag: 'Free' },
-  { id: 'openai/gpt-5-chat', name: 'GPT-5 Chat', provider: 'github', tag: 'Preview' },
-  { id: 'openai/gpt-5-mini', name: 'GPT-5 Mini', provider: 'github', tag: 'Fast' },
-  { id: 'openai/gpt-5-nano', name: 'GPT-5 Nano', provider: 'github', tag: 'Fast' },
   { id: 'openai/gpt-4.1', name: 'GPT-4.1', provider: 'github', tag: 'Free' },
   { id: 'openai/gpt-4.1-mini', name: 'GPT-4.1 Mini', provider: 'github', tag: 'Fast' },
   { id: 'openai/gpt-4.1-nano', name: 'GPT-4.1 Nano', provider: 'github', tag: 'Fast' },
