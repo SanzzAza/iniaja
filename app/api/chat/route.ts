@@ -24,7 +24,7 @@ export async function POST(req: Request) {
         baseURL: 'https://openrouter.ai/api/v1',
         defaultHeaders: {
           'HTTP-Referer': 'https://iniaja.vercel.app',
-          'X-Title': 'My AI Chat',
+          'X-Title': 'Iniaja AI',
         },
       });
     } else if (provider === 'github') {
@@ -39,15 +39,28 @@ export async function POST(req: Request) {
       );
     }
 
-    const stream: any = await client.chat.completions.create({
-      model: model,
+    // Cerebras only supports: model, messages, stream, temperature, max_tokens
+    // Google Gemini also has issues with penalty params
+    // Keep params minimal and safe across all providers
+    const baseParams = {
+      model,
       messages,
-      stream: true,
+      stream: true as const,
       temperature: 0.7,
       max_tokens: 2048,
-      top_p: 0.9,
-      frequency_penalty: 0.5,
-      presence_penalty: 0.3,
+    };
+
+    const extraParams = (provider === 'cerebras' || provider === 'google')
+      ? {}
+      : {
+          top_p: 0.9,
+          frequency_penalty: 0.5,
+          presence_penalty: 0.3,
+        };
+
+    const stream: any = await client.chat.completions.create({
+      ...baseParams,
+      ...extraParams,
     });
 
     const encoder = new TextEncoder();
@@ -59,7 +72,7 @@ export async function POST(req: Request) {
         try {
           for await (const chunk of stream) {
             const text = chunk.choices[0]?.delta?.content || '';
-            
+
             if (text === lastText && text.length > 10) {
               repeatCount++;
               if (repeatCount > 5) {
@@ -70,7 +83,7 @@ export async function POST(req: Request) {
               repeatCount = 0;
             }
             lastText = text;
-            
+
             if (text) controller.enqueue(encoder.encode(text));
           }
           controller.close();
@@ -94,7 +107,7 @@ export async function POST(req: Request) {
     if (error.status === 404) errorMsg = 'Model tidak ditemukan. Coba model lain.';
     else if (error.status === 401) errorMsg = 'API key tidak valid.';
     else if (error.status === 429) errorMsg = 'Rate limit. Coba lagi nanti.';
-    else if (error.status === 400) errorMsg = 'Bad request. Coba model lain.';
+    else if (error.status === 400) errorMsg = `Bad request: ${error.message ?? 'Coba model lain.'}`;
     else if (error.message) errorMsg = error.message;
 
     return new Response(
