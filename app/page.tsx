@@ -1,6 +1,19 @@
 'use client';
 import { useState, useRef, useEffect, useCallback } from 'react';
 
+const ANIM_STYLE = `
+@keyframes fadeSlideUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+.msg-anim { animation: fadeSlideUp 0.3s cubic-bezier(.22,.68,0,1.15) both; }
+.fade-in  { animation: fadeIn 0.18s ease both; }
+`;
+
 const MODELS = [
   { id: 'llama3.1-8b', name: 'Llama 3.1 8B', provider: 'cerebras', tag: 'Fast' },
   { id: 'qwen-3-235b-a22b-instruct-2507', name: 'Qwen 3 235B', provider: 'cerebras', tag: 'Preview' },
@@ -338,7 +351,6 @@ function ModelOption({ m, selected, onSelect }: { m: typeof MODELS[0]; selected:
 
 // ── Main app ─────────────────────────────────────────────────────────────────
 export default function App() {
-  // ── FIX #1: Load initial state from localStorage ──
   const [chats, setChats] = useState<Chat[]>(() => loadChats());
   const [activeChatId, setActiveChatId] = useState<string | null>(null);
   const [input, setInput] = useState('');
@@ -348,26 +360,53 @@ export default function App() {
   });
   const [loading, setLoading] = useState(false);
   const [showModelMenu, setShowModelMenu] = useState(false);
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  // ── MOBILE: default sidebar closed on small screens ──
+  const [sidebarOpen, setSidebarOpen] = useState(() => typeof window !== 'undefined' ? window.innerWidth >= 768 : true);
   const [modelSearch, setModelSearch] = useState('');
   const [copiedIdx, setCopiedIdx] = useState<number | null>(null);
+  // ── SCROLL-TO-BOTTOM: track if user scrolled up ──
+  const [showScrollBtn, setShowScrollBtn] = useState(false);
 
   const bottomRef   = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const searchRef   = useRef<HTMLInputElement>(null);
-  // ── FIX #2: AbortController ref for stop generation ──
-  const abortRef = useRef<AbortController | null>(null);
+  const abortRef    = useRef<AbortController | null>(null);
+  const mainRef     = useRef<HTMLDivElement>(null);
 
   const activeChat = chats.find(c => c.id === activeChatId);
   const messages   = activeChat?.messages || [];
 
-  // ── FIX #1: Persist chats to localStorage whenever they change ──
+  // ── Persist chats ──
   useEffect(() => { saveChats(chats); }, [chats]);
-
-  // ── FIX #1: Persist selected model ──
   useEffect(() => { saveModelId(model.id); }, [model]);
 
-  useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages]);
+  // ── Auto-scroll to bottom on new messages, but only if already near bottom ──
+  useEffect(() => {
+    const el = mainRef.current;
+    if (!el) return;
+    const nearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 120;
+    if (nearBottom || loading) bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages, loading]);
+
+  // ── Show scroll-to-bottom button when user scrolls up ──
+  useEffect(() => {
+    const el = mainRef.current;
+    if (!el) return;
+    const onScroll = () => {
+      const distFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
+      setShowScrollBtn(distFromBottom > 180);
+    };
+    el.addEventListener('scroll', onScroll, { passive: true });
+    return () => el.removeEventListener('scroll', onScroll);
+  }, []);
+
+  // ── Close sidebar on mobile when chat starts ──
+  useEffect(() => {
+    if (typeof window !== 'undefined' && window.innerWidth < 768) {
+      setSidebarOpen(false);
+    }
+  }, [activeChatId]);
+
   useEffect(() => {
     if (!textareaRef.current) return;
     textareaRef.current.style.height = 'auto';
@@ -479,10 +518,20 @@ export default function App() {
 
   return (
     <div className="flex h-screen overflow-hidden" style={{ background: '#0a0a0f', color: '#fff', fontFamily: "'Inter', -apple-system, sans-serif" }}>
+      <style>{ANIM_STYLE}</style>
+
+      {/* ── MOBILE: backdrop overlay when sidebar open ── */}
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 z-10 md:hidden fade-in"
+          style={{ background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(2px)' }}
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
 
       {/* ── Sidebar ─────────────────────────────────────────────── */}
       <aside
-        className="flex-shrink-0 flex flex-col overflow-hidden transition-all duration-300"
+        className="flex-shrink-0 flex flex-col overflow-hidden transition-all duration-300 fixed md:relative z-20 h-full"
         style={{ width: sidebarOpen ? 260 : 0, background: '#0f0f17', borderRight: '1px solid rgba(255,255,255,0.05)' }}
       >
         <div className="flex items-center justify-between p-3 flex-shrink-0" style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
@@ -546,7 +595,7 @@ export default function App() {
       </aside>
 
       {/* ── Main ────────────────────────────────────────────────── */}
-      <div className="flex-1 flex flex-col min-w-0">
+      <div className="flex-1 flex flex-col min-w-0 w-full">
 
         {/* Header */}
         <header className="flex items-center justify-between px-3 py-2.5 flex-shrink-0" style={{ borderBottom: '1px solid rgba(255,255,255,0.05)', background: 'rgba(10,10,15,0.85)', backdropFilter: 'blur(20px)' }}>
@@ -596,19 +645,7 @@ export default function App() {
                         filtered.length === 0
                           ? <p className="text-xs text-center py-6" style={{ color: 'rgba(255,255,255,0.2)' }}>No results</p>
                           : filtered.map(m => <ModelOption key={m.id} m={m} selected={model.id === m.id} onSelect={() => { setModel(m); setShowModelMenu(false); }} />)
-                      ) : providers.map((prov, pi) => {
-                        const group = MODELS.filter(m => m.provider === prov);
-                        if (!group.length) return null;
-                        return (
-                          <div key={prov}>
-                            {pi > 0 && <div className="my-2" style={{ borderTop: '1px solid rgba(255,255,255,0.05)' }} />}
-                            <p className="text-[10px] font-bold uppercase tracking-widest px-3 py-1.5" style={{ color: PROVIDER_META[prov]?.color ?? 'rgba(255,255,255,0.3)', opacity: 0.8 }}>
-                              {PROVIDER_META[prov]?.label}
-                            </p>
-                            {group.map(m => <ModelOption key={m.id} m={m} selected={model.id === m.id} onSelect={() => { setModel(m); setShowModelMenu(false); }} />)}
-                          </div>
-                        );
-                      })}
+                      ) : MODELS.map(m => <ModelOption key={m.id} m={m} selected={model.id === m.id} onSelect={() => { setModel(m); setShowModelMenu(false); }} />)}
                     </div>
                   </div>
                 </>
@@ -629,7 +666,19 @@ export default function App() {
         </header>
 
         {/* Messages */}
-        <main className="flex-1 overflow-y-auto">
+        <main ref={mainRef} className="flex-1 overflow-y-auto relative">
+          {/* ── SCROLL-TO-BOTTOM button ── */}
+          {showScrollBtn && (
+            <button
+              onClick={() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }); }}
+              className="fixed bottom-28 right-5 z-30 w-9 h-9 rounded-full flex items-center justify-center fade-in transition-all hover:scale-110"
+              style={{ background: 'rgba(124,58,237,0.85)', boxShadow: '0 4px 20px rgba(124,58,237,0.45)', border: '1px solid rgba(139,92,246,0.4)' }}
+            >
+              <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+              </svg>
+            </button>
+          )}
           <div className="max-w-[700px] mx-auto px-5 py-8">
             {messages.length === 0 ? (
               <div className="flex flex-col items-center justify-center min-h-[60vh] text-center">
@@ -668,7 +717,7 @@ export default function App() {
             ) : (
               <div className="space-y-7">
                 {messages.map((m, i) => (
-                  <div key={i} className="group">
+                  <div key={i} className="group msg-anim" style={{ animationDelay: `${Math.min(i * 40, 200)}ms` }}>
                     {m.role === 'user' ? (
                       <div className="flex justify-end">
                         <div className="max-w-[78%]">
@@ -713,7 +762,7 @@ export default function App() {
                 ))}
 
                 {loading && messages[messages.length - 1]?.role === 'user' && (
-                  <div className="flex gap-3">
+                  <div className="flex gap-3 msg-anim">
                     <div className="w-7 h-7 rounded-xl flex-shrink-0 flex items-center justify-center" style={{ background: 'linear-gradient(135deg,#7c3aed,#4f46e5)' }}>
                       <svg className="w-3.5 h-3.5 text-white animate-pulse" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                         <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
