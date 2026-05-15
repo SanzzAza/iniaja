@@ -67,8 +67,31 @@ const SUGGESTIONS = [
   { icon: '◇', text: 'Debug my JavaScript code' },
 ];
 
+const LS_KEY_CHATS    = 'iniaja_chats';
+const LS_KEY_MODEL_ID = 'iniaja_model_id';
+
 type Message = { role: 'user' | 'assistant'; content: string; timestamp: number };
 type Chat = { id: string; title: string; messages: Message[]; model: typeof MODELS[0] };
+
+// ── localStorage helpers ──────────────────────────────────────────────────────
+function loadChats(): Chat[] {
+  try {
+    const raw = localStorage.getItem(LS_KEY_CHATS);
+    return raw ? JSON.parse(raw) : [];
+  } catch { return []; }
+}
+
+function saveChats(chats: Chat[]) {
+  try { localStorage.setItem(LS_KEY_CHATS, JSON.stringify(chats)); } catch {}
+}
+
+function loadSavedModelId(): string | null {
+  try { return localStorage.getItem(LS_KEY_MODEL_ID); } catch { return null; }
+}
+
+function saveModelId(id: string) {
+  try { localStorage.setItem(LS_KEY_MODEL_ID, id); } catch {}
+}
 
 // ── Syntax token colorizer (basic) ──────────────────────────────────────────
 function tokenize(code: string, lang: string): React.ReactNode {
@@ -80,9 +103,9 @@ function tokenize(code: string, lang: string): React.ReactNode {
     ? /\b(def|class|import|from|return|if|else|elif|for|while|in|not|and|or|True|False|None|try|except|with|as|pass|raise|lambda|yield|async|await)\b/g
     : /\b(const|let|var|function|return|if|else|for|while|import|export|default|from|class|extends|new|this|async|await|try|catch|throw|typeof|instanceof|null|undefined|true|false|void|in|of|type|interface|enum)\b/g;
 
-  const strings = /(["'`])(?:(?!\1)[^\\]|\\.)*\1/g;
+  const strings  = /(["'`])(?:(?!\1)[^\\]|\\.)*\1/g;
   const comments = /(\/\/[^\n]*|#[^\n]*|\/\*[\s\S]*?\*\/)/g;
-  const numbers = /\b(\d+\.?\d*)\b/g;
+  const numbers  = /\b(\d+\.?\d*)\b/g;
   const functions = /\b([a-zA-Z_$][a-zA-Z0-9_$]*)\s*(?=\()/g;
 
   type Segment = { start: number; end: number; type: string; text: string };
@@ -91,9 +114,8 @@ function tokenize(code: string, lang: string): React.ReactNode {
   const collect = (re: RegExp, type: string) => {
     re.lastIndex = 0;
     let m;
-    while ((m = re.exec(code)) !== null) {
+    while ((m = re.exec(code)) !== null)
       segments.push({ start: m.index, end: m.index + m[0].length, type, text: m[0] });
-    }
   };
 
   collect(comments, 'comment');
@@ -104,30 +126,22 @@ function tokenize(code: string, lang: string): React.ReactNode {
   const collectSafe = (re: RegExp, type: string) => {
     re.lastIndex = 0;
     let m;
-    while ((m = re.exec(code)) !== null) {
-      if (!occupied(m.index)) {
+    while ((m = re.exec(code)) !== null)
+      if (!occupied(m.index))
         segments.push({ start: m.index, end: m.index + m[0].length, type, text: m[0] });
-      }
-    }
   };
 
   collectSafe(keywords, 'kw');
   collectSafe(numbers, 'num');
   collectSafe(functions, 'fn');
-
   segments.sort((a, b) => a.start - b.start);
+
+  const colorMap: Record<string, string> = {
+    kw: '#c678dd', string: '#98c379', comment: '#5c6370', num: '#d19a66', fn: '#61afef',
+  };
 
   const result: React.ReactNode[] = [];
   let pos = 0;
-
-  const colorMap: Record<string, string> = {
-    kw: '#c678dd',
-    string: '#98c379',
-    comment: '#5c6370',
-    num: '#d19a66',
-    fn: '#61afef',
-  };
-
   for (const seg of segments) {
     if (seg.start < pos) continue;
     if (seg.start > pos) result.push(<span key={pos} className="text-[#abb2bf]">{code.slice(pos, seg.start)}</span>);
@@ -135,7 +149,6 @@ function tokenize(code: string, lang: string): React.ReactNode {
     pos = seg.end;
   }
   if (pos < code.length) result.push(<span key={pos} className="text-[#abb2bf]">{code.slice(pos)}</span>);
-
   return <>{result}</>;
 }
 
@@ -147,12 +160,9 @@ function CodeBlock({ code, lang }: { code: string; lang: string }) {
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
-
   const displayLang = lang || 'plain';
-
   return (
     <div className="my-4 rounded-2xl overflow-hidden" style={{ background: '#1a1b26', border: '1px solid rgba(255,255,255,0.07)' }}>
-      {/* Header */}
       <div className="flex items-center justify-between px-4 py-2.5" style={{ background: '#13141f', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
         <div className="flex items-center gap-3">
           <div className="flex gap-1.5">
@@ -179,7 +189,6 @@ function CodeBlock({ code, lang }: { code: string; lang: string }) {
           {copied ? 'Copied!' : 'Copy'}
         </button>
       </div>
-      {/* Code */}
       <pre className="overflow-x-auto px-5 py-4 text-[13px] leading-[1.8] font-mono">
         <code>{tokenize(code, displayLang)}</code>
       </pre>
@@ -217,18 +226,13 @@ function renderMarkdown(text: string): React.ReactNode[] {
   while (i < lines.length) {
     const line = lines[i];
 
-    // Fenced code block
     if (line.startsWith('```')) {
       const lang = line.slice(3).trim().toLowerCase();
       const codeLines: string[] = [];
       i++;
-      while (i < lines.length && !lines[i].startsWith('```')) {
-        codeLines.push(lines[i]);
-        i++;
-      }
+      while (i < lines.length && !lines[i].startsWith('```')) { codeLines.push(lines[i]); i++; }
       nodes.push(<CodeBlock key={`code-${i}`} code={codeLines.join('\n')} lang={lang} />);
-      i++;
-      continue;
+      i++; continue;
     }
 
     const h1 = line.match(/^# (.+)/);
@@ -238,14 +242,8 @@ function renderMarkdown(text: string): React.ReactNode[] {
     if (h2) { nodes.push(<h2 key={i} className="text-lg font-semibold text-white/90 mt-4 mb-2 leading-snug">{inlineFormat(h2[1])}</h2>); i++; continue; }
     if (h3) { nodes.push(<h3 key={i} className="text-base font-semibold text-white/80 mt-3 mb-1.5">{inlineFormat(h3[1])}</h3>); i++; continue; }
 
-    // Horizontal rule
-    if (line.match(/^---+$/)) {
-      nodes.push(<hr key={i} className="border-white/8 my-4" />);
-      i++;
-      continue;
-    }
+    if (line.match(/^---+$/)) { nodes.push(<hr key={i} className="border-white/8 my-4" />); i++; continue; }
 
-    // Blockquote
     if (line.startsWith('> ')) {
       nodes.push(
         <div key={i} className="flex gap-3 my-2">
@@ -253,17 +251,12 @@ function renderMarkdown(text: string): React.ReactNode[] {
           <p className="text-sm text-white/45 italic leading-relaxed">{inlineFormat(line.slice(2))}</p>
         </div>
       );
-      i++;
-      continue;
+      i++; continue;
     }
 
-    // Unordered list
     if (line.match(/^[-*•] /)) {
       const items: string[] = [];
-      while (i < lines.length && lines[i].match(/^[-*•] /)) {
-        items.push(lines[i].replace(/^[-*•] /, ''));
-        i++;
-      }
+      while (i < lines.length && lines[i].match(/^[-*•] /)) { items.push(lines[i].replace(/^[-*•] /, '')); i++; }
       nodes.push(
         <ul key={`ul-${i}`} className="my-2.5 space-y-1.5 pl-0">
           {items.map((item, j) => (
@@ -277,13 +270,9 @@ function renderMarkdown(text: string): React.ReactNode[] {
       continue;
     }
 
-    // Ordered list
     if (line.match(/^\d+\. /)) {
       const items: string[] = [];
-      while (i < lines.length && lines[i].match(/^\d+\. /)) {
-        items.push(lines[i].replace(/^\d+\. /, ''));
-        i++;
-      }
+      while (i < lines.length && lines[i].match(/^\d+\. /)) { items.push(lines[i].replace(/^\d+\. /, '')); i++; }
       nodes.push(
         <ol key={`ol-${i}`} className="my-2.5 space-y-1.5 pl-0">
           {items.map((item, j) => (
@@ -297,20 +286,11 @@ function renderMarkdown(text: string): React.ReactNode[] {
       continue;
     }
 
-    // Empty line = spacing
-    if (line.trim() === '') {
-      nodes.push(<div key={`sp-${i}`} className="h-1.5" />);
-      i++;
-      continue;
-    }
+    if (line.trim() === '') { nodes.push(<div key={`sp-${i}`} className="h-1.5" />); i++; continue; }
 
-    // Paragraph
-    nodes.push(
-      <p key={i} className="text-[14.5px] leading-[1.8] text-white/75">{inlineFormat(line)}</p>
-    );
+    nodes.push(<p key={i} className="text-[14.5px] leading-[1.8] text-white/75">{inlineFormat(line)}</p>);
     i++;
   }
-
   return nodes;
 }
 
@@ -358,22 +338,34 @@ function ModelOption({ m, selected, onSelect }: { m: typeof MODELS[0]; selected:
 
 // ── Main app ─────────────────────────────────────────────────────────────────
 export default function App() {
-  const [chats, setChats] = useState<Chat[]>([]);
+  // ── FIX #1: Load initial state from localStorage ──
+  const [chats, setChats] = useState<Chat[]>(() => loadChats());
   const [activeChatId, setActiveChatId] = useState<string | null>(null);
   const [input, setInput] = useState('');
-  const [model, setModel] = useState(MODELS[0]);
+  const [model, setModel] = useState<typeof MODELS[0]>(() => {
+    const savedId = loadSavedModelId();
+    return MODELS.find(m => m.id === savedId) ?? MODELS[0];
+  });
   const [loading, setLoading] = useState(false);
   const [showModelMenu, setShowModelMenu] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [modelSearch, setModelSearch] = useState('');
   const [copiedIdx, setCopiedIdx] = useState<number | null>(null);
 
-  const bottomRef = useRef<HTMLDivElement>(null);
+  const bottomRef   = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const searchRef = useRef<HTMLInputElement>(null);
+  const searchRef   = useRef<HTMLInputElement>(null);
+  // ── FIX #2: AbortController ref for stop generation ──
+  const abortRef = useRef<AbortController | null>(null);
 
   const activeChat = chats.find(c => c.id === activeChatId);
-  const messages = activeChat?.messages || [];
+  const messages   = activeChat?.messages || [];
+
+  // ── FIX #1: Persist chats to localStorage whenever they change ──
+  useEffect(() => { saveChats(chats); }, [chats]);
+
+  // ── FIX #1: Persist selected model ──
+  useEffect(() => { saveModelId(model.id); }, [model]);
 
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages]);
   useEffect(() => {
@@ -394,6 +386,11 @@ export default function App() {
     setTimeout(() => setCopiedIdx(null), 2000);
   }
 
+  // ── FIX #2: Stop generation ──
+  function stopGeneration() {
+    abortRef.current?.abort();
+  }
+
   const sendMessage = useCallback(async (override?: string) => {
     const text = (override ?? input).trim();
     if (!text || loading) return;
@@ -404,8 +401,8 @@ export default function App() {
 
     if (!chatId) {
       const id = Date.now().toString();
-      const newChat: Chat = { id, title: text.slice(0, 50), messages: [], model };
-      currentChats = [newChat, ...chats];
+      const newC: Chat = { id, title: text.slice(0, 50), messages: [], model };
+      currentChats = [newC, ...chats];
       setChats(currentChats);
       setActiveChatId(id);
       chatId = id;
@@ -416,10 +413,15 @@ export default function App() {
     setInput('');
     setLoading(true);
 
+    // ── FIX #2: Create fresh AbortController for this request ──
+    const controller = new AbortController();
+    abortRef.current = controller;
+
     try {
       const res = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        signal: controller.signal,
         body: JSON.stringify({
           messages: newMsgs.map(({ role, content }) => ({ role, content })),
           model: model.id,
@@ -432,7 +434,7 @@ export default function App() {
         throw new Error(err.error || 'Request failed');
       }
 
-      const reader = res.body!.getReader();
+      const reader  = res.body!.getReader();
       const decoder = new TextDecoder();
       let aiText = '';
       const aiTs = Date.now();
@@ -450,11 +452,14 @@ export default function App() {
         ));
       }
     } catch (err: any) {
+      // ── FIX #2: Don't show error if user intentionally stopped ──
+      if (err.name === 'AbortError') return;
       setChats(prev => prev.map(c =>
         c.id === chatId ? { ...c, messages: [...newMsgs, { role: 'assistant', content: `⚠️ ${err.message}`, timestamp: Date.now() }] } : c
       ));
     } finally {
       setLoading(false);
+      abortRef.current = null;
     }
   }, [input, loading, activeChatId, chats, model]);
 
@@ -468,7 +473,7 @@ export default function App() {
   }
 
   const providers = Object.keys(PROVIDER_META);
-  const filtered = modelSearch
+  const filtered  = modelSearch
     ? MODELS.filter(m => m.name.toLowerCase().includes(modelSearch.toLowerCase()) || PROVIDER_META[m.provider]?.label.toLowerCase().includes(modelSearch.toLowerCase()))
     : MODELS;
 
@@ -571,7 +576,6 @@ export default function App() {
                 <>
                   <div className="fixed inset-0 z-20" onClick={() => setShowModelMenu(false)} />
                   <div className="absolute top-full left-0 mt-2 w-80 z-30 overflow-hidden rounded-2xl" style={{ background: '#141420', border: '1px solid rgba(255,255,255,0.09)', boxShadow: '0 24px 64px rgba(0,0,0,0.8)' }}>
-                    {/* Search */}
                     <div className="p-2" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
                       <div className="flex items-center gap-2 px-3 py-2 rounded-xl" style={{ background: 'rgba(255,255,255,0.05)' }}>
                         <svg className="w-3.5 h-3.5 flex-shrink-0" style={{ color: 'rgba(255,255,255,0.2)' }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -646,12 +650,13 @@ export default function App() {
                   Using <span style={{ color: PROVIDER_META[model.provider]?.color ?? 'rgba(255,255,255,0.4)' }}>{model.name}</span>
                 </p>
 
+                {/* ── FIX #3: Suggestion cards langsung auto-send ── */}
                 <div className="grid grid-cols-2 gap-2 w-full max-w-sm">
                   {SUGGESTIONS.map(({ icon, text }) => (
                     <button
                       key={text}
-                      onClick={() => { setInput(text); textareaRef.current?.focus(); }}
-                      className="px-4 py-3.5 rounded-2xl text-left transition-all group"
+                      onClick={() => sendMessage(text)}
+                      className="px-4 py-3.5 rounded-2xl text-left transition-all hover:border-white/15"
                       style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)' }}
                     >
                       <span className="block text-sm mb-1" style={{ color: 'rgba(255,255,255,0.2)' }}>{icon}</span>
@@ -745,20 +750,33 @@ export default function App() {
               <div className="absolute bottom-0 left-0 right-0 flex items-center justify-between px-3 pb-3">
                 <span className="text-[11px]" style={{ color: 'rgba(255,255,255,0.15)' }}>↵ send · ⇧↵ newline</span>
                 <div className="flex items-center gap-2">
-                  {loading && <span className="text-[11px] animate-pulse" style={{ color: 'rgba(255,255,255,0.2)' }}>Generating…</span>}
-                  <button
-                    onClick={() => sendMessage()}
-                    disabled={loading || !input.trim()}
-                    className="w-8 h-8 rounded-xl flex items-center justify-center transition-all"
-                    style={{
-                      background: input.trim() && !loading ? 'linear-gradient(135deg,#7c3aed,#4f46e5)' : 'rgba(255,255,255,0.05)',
-                      boxShadow: input.trim() && !loading ? '0 4px 16px rgba(124,58,237,0.35)' : 'none',
-                    }}
-                  >
-                    <svg className="w-3.5 h-3.5" style={{ color: input.trim() && !loading ? '#fff' : 'rgba(255,255,255,0.2)' }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 10l7-7m0 0l7 7m-7-7v18" />
-                    </svg>
-                  </button>
+                  {/* ── FIX #2: Stop button saat generating ── */}
+                  {loading ? (
+                    <button
+                      onClick={stopGeneration}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[12px] font-medium transition-all"
+                      style={{ background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.25)', color: 'rgba(248,113,113,0.9)' }}
+                    >
+                      <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24">
+                        <rect x="6" y="6" width="12" height="12" rx="2" />
+                      </svg>
+                      Stop
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => sendMessage()}
+                      disabled={!input.trim()}
+                      className="w-8 h-8 rounded-xl flex items-center justify-center transition-all"
+                      style={{
+                        background: input.trim() ? 'linear-gradient(135deg,#7c3aed,#4f46e5)' : 'rgba(255,255,255,0.05)',
+                        boxShadow: input.trim() ? '0 4px 16px rgba(124,58,237,0.35)' : 'none',
+                      }}
+                    >
+                      <svg className="w-3.5 h-3.5" style={{ color: input.trim() ? '#fff' : 'rgba(255,255,255,0.2)' }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 10l7-7m0 0l7 7m-7-7v18" />
+                      </svg>
+                    </button>
+                  )}
                 </div>
               </div>
             </div>
