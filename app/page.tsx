@@ -15,10 +15,13 @@ const MODELS = [
   { id: 'inclusionai/ring-2.6-1t:free', name: 'Ring 2.6 1T', provider: 'openrouter', tag: 'Free' },
 
   // Google Gemini
-  { id: 'gemini-2.0-flash', name: 'Gemini 2.0 Flash', provider: 'google', tag: 'Fast' },
+  { id: 'gemini-2.0-flash', name: 'Gemini 2.0 Flash', provider: 'google', tag: 'Free' },
   { id: 'gemini-2.0-flash-lite', name: 'Gemini 2.0 Flash Lite', provider: 'google', tag: 'Fast' },
-  { id: 'gemini-1.5-flash', name: 'Gemini 1.5 Flash', provider: 'google', tag: 'Free' },
-  { id: 'gemini-1.5-flash-8b', name: 'Gemini 1.5 Flash 8B', provider: 'google', tag: 'Free' },
+  { id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash', provider: 'google', tag: 'Free' },
+  { id: 'gemini-2.5-pro', name: 'Gemini 2.5 Pro', provider: 'google', tag: 'Free' },
+  { id: 'gemini-2.5-flash-lite', name: 'Gemini 2.5 Flash Lite', provider: 'google', tag: 'Fast' },
+  { id: 'gemini-3-pro-preview', name: 'Gemini 3 Pro', provider: 'google', tag: 'Preview' },
+  { id: 'gemini-3-flash-preview', name: 'Gemini 3 Flash', provider: 'google', tag: 'Preview' },
 ];
 
 type Message = { role: 'user' | 'assistant'; content: string };
@@ -28,7 +31,9 @@ export default function App() {
   const [chats, setChats] = useState<Chat[]>([]);
   const [activeChatId, setActiveChatId] = useState<string | null>(null);
   const [input, setInput] = useState('');
-  const [model, setModel] = useState(MODELS[0]);
+  const [model, setModel] = useState(
+    MODELS.find(m => m.id === 'gemini-2.0-flash') || MODELS[0]
+  );
   const [loading, setLoading] = useState(false);
   const [showModelMenu, setShowModelMenu] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -145,14 +150,12 @@ export default function App() {
     }
   }
 
-  // Provider dot color
   function providerColor(provider: string) {
     if (provider === 'cerebras') return 'bg-orange-400';
     if (provider === 'google') return 'bg-blue-400';
     return 'bg-green-400';
   }
 
-  // Tag color
   function tagColor(tag: string) {
     if (tag === 'Free') return 'bg-green-500/10 text-green-400';
     if (tag === 'Preview') return 'bg-purple-500/10 text-purple-400';
@@ -253,7 +256,7 @@ export default function App() {
               {showModelMenu && (
                 <>
                   <div className="fixed inset-0 z-20" onClick={() => setShowModelMenu(false)} />
-                  <div className="absolute top-full left-0 mt-2 w-72 bg-[#1a1a1a] border border-white/10 rounded-2xl shadow-2xl shadow-black/50 z-30 overflow-hidden">
+                  <div className="absolute top-full left-0 mt-2 w-72 bg-[#1a1a1a] border border-white/10 rounded-2xl shadow-2xl shadow-black/50 z-30 overflow-hidden max-h-[70vh] overflow-y-auto">
                     <div className="p-2">
                       {providers.map((prov, pi) => (
                         <div key={prov.key}>
