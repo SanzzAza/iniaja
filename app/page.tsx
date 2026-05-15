@@ -15,13 +15,10 @@ const MODELS = [
   { id: 'inclusionai/ring-2.6-1t:free', name: 'Ring 2.6 1T', provider: 'openrouter', tag: 'Free' },
 
   // Google Gemini
-  { id: 'gemini-2.0-flash', name: 'Gemini 2.0 Flash', provider: 'google', tag: 'Free' },
-  { id: 'gemini-2.0-flash-lite', name: 'Gemini 2.0 Flash Lite', provider: 'google', tag: 'Fast' },
-  { id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash', provider: 'google', tag: 'Free' },
-  { id: 'gemini-2.5-pro', name: 'Gemini 2.5 Pro', provider: 'google', tag: 'Free' },
-  { id: 'gemini-2.5-flash-lite', name: 'Gemini 2.5 Flash Lite', provider: 'google', tag: 'Fast' },
-  { id: 'gemini-3-pro-preview', name: 'Gemini 3 Pro', provider: 'google', tag: 'Preview' },
+  { id: 'gemini-3.1-pro-preview', name: 'Gemini 3.1 Pro', provider: 'google', tag: 'Preview' },
+  { id: 'gemini-3.1-flash-lite-preview', name: 'Gemini 3.1 Flash Lite', provider: 'google', tag: 'Preview' },
   { id: 'gemini-3-flash-preview', name: 'Gemini 3 Flash', provider: 'google', tag: 'Preview' },
+  { id: 'gemini-2.5-pro', name: 'Gemini 2.5 Pro', provider: 'google', tag: 'Free' },
 ];
 
 type Message = { role: 'user' | 'assistant'; content: string };
@@ -31,9 +28,7 @@ export default function App() {
   const [chats, setChats] = useState<Chat[]>([]);
   const [activeChatId, setActiveChatId] = useState<string | null>(null);
   const [input, setInput] = useState('');
-  const [model, setModel] = useState(
-    MODELS.find(m => m.id === 'gemini-2.0-flash') || MODELS[0]
-  );
+  const [model, setModel] = useState(MODELS[0]);
   const [loading, setLoading] = useState(false);
   const [showModelMenu, setShowModelMenu] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
