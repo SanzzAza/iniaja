@@ -9,11 +9,11 @@ export async function POST(req: Request) {
     const config: Record<string, { apiKey: string; baseURL: string }> = {
       openrouter: {
         apiKey: process.env.OPENROUTER_API_KEY!,
-        baseURL: 'https://openrouter.ai/api/v1',
+        baseURL: 'https://openrouter.ai/api/v1/chat/completions',
       },
       cerebras: {
         apiKey: process.env.CEREBRAS_API_KEY!,
-        baseURL: 'https://api.cerebras.ai/v1',
+        baseURL: 'https://api.cerebras.ai/v1/chat/completions',
       },
     };
 
