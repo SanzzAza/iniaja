@@ -19,6 +19,25 @@ const MODELS = [
   { id: 'gemini-3.1-flash-lite-preview', name: 'Gemini 3.1 Flash Lite', provider: 'google', tag: 'Preview' },
   { id: 'gemini-3-flash-preview', name: 'Gemini 3 Flash', provider: 'google', tag: 'Preview' },
   { id: 'gemini-2.5-pro', name: 'Gemini 2.5 Pro', provider: 'google', tag: 'Free' },
+
+  // GitHub Models
+  { id: 'openai/gpt-5', name: 'GPT-5', provider: 'github', tag: 'Free' },
+  { id: 'openai/gpt-5-mini', name: 'GPT-5 Mini', provider: 'github', tag: 'Fast' },
+  { id: 'openai/gpt-5-nano', name: 'GPT-5 Nano', provider: 'github', tag: 'Fast' },
+  { id: 'openai/gpt-4.1', name: 'GPT-4.1', provider: 'github', tag: 'Free' },
+  { id: 'openai/gpt-4o', name: 'GPT-4o', provider: 'github', tag: 'Free' },
+  { id: 'openai/gpt-4o-mini', name: 'GPT-4o Mini', provider: 'github', tag: 'Fast' },
+  { id: 'openai/o4-mini', name: 'o4 Mini', provider: 'github', tag: 'Free' },
+  { id: 'deepseek/DeepSeek-V3-0324', name: 'DeepSeek V3', provider: 'github', tag: 'Free' },
+  { id: 'deepseek/DeepSeek-R1', name: 'DeepSeek R1', provider: 'github', tag: 'Free' },
+  { id: 'meta/Llama-4-Scout-17B-16E-Instruct', name: 'Llama 4 Scout', provider: 'github', tag: 'Free' },
+  { id: 'meta/Llama-4-Maverick-17B-128E-Instruct-FP8', name: 'Llama 4 Maverick', provider: 'github', tag: 'Free' },
+  { id: 'meta/Meta-Llama-3.1-405B-Instruct', name: 'Llama 3.1 405B', provider: 'github', tag: 'Free' },
+  { id: 'microsoft/Phi-4', name: 'Phi 4', provider: 'github', tag: 'Free' },
+  { id: 'mistral-ai/Mistral-Large-2411', name: 'Mistral Large', provider: 'github', tag: 'Free' },
+  { id: 'mistral-ai/Codestral-2501', name: 'Codestral', provider: 'github', tag: 'Free' },
+  { id: 'xai/grok-3', name: 'Grok 3', provider: 'github', tag: 'Free' },
+  { id: 'xai/grok-3-mini', name: 'Grok 3 Mini', provider: 'github', tag: 'Fast' },
 ];
 
 type Message = { role: 'user' | 'assistant'; content: string };
@@ -148,6 +167,7 @@ export default function App() {
   function providerColor(provider: string) {
     if (provider === 'cerebras') return 'bg-orange-400';
     if (provider === 'google') return 'bg-blue-400';
+    if (provider === 'github') return 'bg-purple-400';
     return 'bg-green-400';
   }
 
@@ -161,6 +181,7 @@ export default function App() {
     { key: 'cerebras', label: 'Cerebras' },
     { key: 'openrouter', label: 'OpenRouter' },
     { key: 'google', label: 'Google Gemini' },
+    { key: 'github', label: 'GitHub Models' },
   ];
 
   return (
