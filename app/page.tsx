@@ -20,24 +20,56 @@ const MODELS = [
   { id: 'gemini-3-flash-preview', name: 'Gemini 3 Flash', provider: 'google', tag: 'Preview' },
   { id: 'gemini-2.5-pro', name: 'Gemini 2.5 Pro', provider: 'google', tag: 'Free' },
 
-  // GitHub Models
+  // GitHub Models - OpenAI
   { id: 'openai/gpt-5', name: 'GPT-5', provider: 'github', tag: 'Free' },
+  { id: 'openai/gpt-5-chat', name: 'GPT-5 Chat', provider: 'github', tag: 'Preview' },
   { id: 'openai/gpt-5-mini', name: 'GPT-5 Mini', provider: 'github', tag: 'Fast' },
   { id: 'openai/gpt-5-nano', name: 'GPT-5 Nano', provider: 'github', tag: 'Fast' },
   { id: 'openai/gpt-4.1', name: 'GPT-4.1', provider: 'github', tag: 'Free' },
+  { id: 'openai/gpt-4.1-mini', name: 'GPT-4.1 Mini', provider: 'github', tag: 'Fast' },
+  { id: 'openai/gpt-4.1-nano', name: 'GPT-4.1 Nano', provider: 'github', tag: 'Fast' },
   { id: 'openai/gpt-4o', name: 'GPT-4o', provider: 'github', tag: 'Free' },
   { id: 'openai/gpt-4o-mini', name: 'GPT-4o Mini', provider: 'github', tag: 'Fast' },
+  { id: 'openai/o1', name: 'o1 Reasoning', provider: 'github', tag: 'Free' },
+  { id: 'openai/o1-mini', name: 'o1 Mini', provider: 'github', tag: 'Fast' },
+  { id: 'openai/o3', name: 'o3 Reasoning', provider: 'github', tag: 'Free' },
+  { id: 'openai/o3-mini', name: 'o3 Mini', provider: 'github', tag: 'Fast' },
   { id: 'openai/o4-mini', name: 'o4 Mini', provider: 'github', tag: 'Free' },
-  { id: 'deepseek/DeepSeek-V3-0324', name: 'DeepSeek V3', provider: 'github', tag: 'Free' },
-  { id: 'deepseek/DeepSeek-R1', name: 'DeepSeek R1', provider: 'github', tag: 'Free' },
-  { id: 'meta/Llama-4-Scout-17B-16E-Instruct', name: 'Llama 4 Scout', provider: 'github', tag: 'Free' },
-  { id: 'meta/Llama-4-Maverick-17B-128E-Instruct-FP8', name: 'Llama 4 Maverick', provider: 'github', tag: 'Free' },
-  { id: 'meta/Meta-Llama-3.1-405B-Instruct', name: 'Llama 3.1 405B', provider: 'github', tag: 'Free' },
-  { id: 'microsoft/Phi-4', name: 'Phi 4', provider: 'github', tag: 'Free' },
-  { id: 'mistral-ai/Mistral-Large-2411', name: 'Mistral Large', provider: 'github', tag: 'Free' },
-  { id: 'mistral-ai/Codestral-2501', name: 'Codestral', provider: 'github', tag: 'Free' },
+
+  // GitHub Models - DeepSeek
+  { id: 'deepseek/deepseek-r1', name: 'DeepSeek R1', provider: 'github', tag: 'Free' },
+  { id: 'deepseek/deepseek-r1-0528', name: 'DeepSeek R1 0528', provider: 'github', tag: 'Free' },
+  { id: 'deepseek/deepseek-v3-0324', name: 'DeepSeek V3', provider: 'github', tag: 'Free' },
+
+  // GitHub Models - Meta Llama
+  { id: 'meta/llama-3.3-70b-instruct', name: 'Llama 3.3 70B', provider: 'github', tag: 'Free' },
+  { id: 'meta/llama-4-maverick-17b-128e-instruct-fp8', name: 'Llama 4 Maverick', provider: 'github', tag: 'Free' },
+  { id: 'meta/llama-4-scout-17b-16e-instruct', name: 'Llama 4 Scout', provider: 'github', tag: 'Free' },
+  { id: 'meta/meta-llama-3.1-405b-instruct', name: 'Llama 3.1 405B', provider: 'github', tag: 'Free' },
+  { id: 'meta/meta-llama-3.1-8b-instruct', name: 'Llama 3.1 8B', provider: 'github', tag: 'Fast' },
+
+  // GitHub Models - xAI Grok
   { id: 'xai/grok-3', name: 'Grok 3', provider: 'github', tag: 'Free' },
   { id: 'xai/grok-3-mini', name: 'Grok 3 Mini', provider: 'github', tag: 'Fast' },
+
+  // GitHub Models - Microsoft
+  { id: 'microsoft/mai-ds-r1', name: 'MAI-DS R1', provider: 'github', tag: 'Free' },
+  { id: 'microsoft/phi-4', name: 'Phi 4', provider: 'github', tag: 'Free' },
+  { id: 'microsoft/phi-4-mini-instruct', name: 'Phi 4 Mini', provider: 'github', tag: 'Fast' },
+  { id: 'microsoft/phi-4-reasoning', name: 'Phi 4 Reasoning', provider: 'github', tag: 'Free' },
+
+  // GitHub Models - Mistral
+  { id: 'mistral-ai/codestral-2501', name: 'Codestral', provider: 'github', tag: 'Free' },
+  { id: 'mistral-ai/mistral-medium-2505', name: 'Mistral Medium 3', provider: 'github', tag: 'Free' },
+  { id: 'mistral-ai/mistral-small-2503', name: 'Mistral Small 3.1', provider: 'github', tag: 'Fast' },
+  { id: 'mistral-ai/ministral-3b', name: 'Ministral 3B', provider: 'github', tag: 'Fast' },
+
+  // GitHub Models - Cohere
+  { id: 'cohere/cohere-command-a', name: 'Command A', provider: 'github', tag: 'Fast' },
+  { id: 'cohere/cohere-command-r-plus-08-2024', name: 'Command R+', provider: 'github', tag: 'Free' },
+
+  // GitHub Models - AI21
+  { id: 'ai21-labs/ai21-jamba-1.5-large', name: 'Jamba 1.5 Large', provider: 'github', tag: 'Free' },
 ];
 
 type Message = { role: 'user' | 'assistant'; content: string };
