@@ -2,23 +2,17 @@
 import { useState, useRef, useEffect } from 'react';
 
 const MODELS = [
-  // ⚡ Cerebras (Verified)
+  // ⚡ Cerebras
   { id: 'llama3.1-8b', name: 'Llama 3.1 8B', provider: 'cerebras', icon: '⚡' },
-  { id: 'llama-3.3-70b', name: 'Llama 3.3 70B', provider: 'cerebras', icon: '⚡' },
-  { id: 'llama-4-scout-17b-16e-instruct', name: 'Llama 4 Scout', provider: 'cerebras', icon: '⚡' },
-  { id: 'llama-4-maverick-17b-128e-instruct', name: 'Llama 4 Maverick', provider: 'cerebras', icon: '⚡' },
-  { id: 'qwen-3-32b', name: 'Qwen 3 32B', provider: 'cerebras', icon: '⚡' },
-  { id: 'qwen-3-235b-a22b-instruct-2507', name: 'Qwen 3 235B', provider: 'cerebras', icon: '⚡' },
-  { id: 'qwen-3-coder-480b', name: 'Qwen 3 Coder 480B', provider: 'cerebras', icon: '⚡' },
+  { id: 'qwen-3-235b-a22b-instruct-2507', name: 'Qwen 3 235B (Preview)', provider: 'cerebras', icon: '⚡' },
   { id: 'gpt-oss-120b', name: 'GPT-OSS 120B', provider: 'cerebras', icon: '⚡' },
-  { id: 'zai-glm-4.6', name: 'GLM 4.6', provider: 'cerebras', icon: '⚡' },
-  { id: 'deepseek-r1-distill-llama-70b', name: 'DeepSeek R1 Distill', provider: 'cerebras', icon: '⚡' },
+  { id: 'zai-glm-4.7', name: 'GLM 4.7', provider: 'cerebras', icon: '⚡' },
 
   // 🌐 OpenRouter (Free)
-  { id: 'deepseek/deepseek-chat-v3.1:free', name: 'DeepSeek V3.1', provider: 'openrouter', icon: '🐋' },
-  { id: 'meta-llama/llama-3.3-70b-instruct:free', name: 'Llama 3.3 70B', provider: 'openrouter', icon: '🦙' },
-  { id: 'google/gemini-2.0-flash-exp:free', name: 'Gemini 2.0 Flash', provider: 'openrouter', icon: '✨' },
-  { id: 'qwen/qwen-2.5-72b-instruct:free', name: 'Qwen 2.5 72B', provider: 'openrouter', icon: '🤖' },
+  { id: 'deepseek/deepseek-v4-flash:free', name: 'DeepSeek V4 Flash', provider: 'openrouter', icon: '🐋' },
+  { id: 'minimax/minimax-m2.5:free', name: 'MiniMax M2.5', provider: 'openrouter', icon: '🤖' },
+  { id: 'nvidia/nemotron-3-super-120b-a12b:free', name: 'Nemotron 3 Super 120B', provider: 'openrouter', icon: '💚' },
+  { id: 'inclusionai/ring-2.6-1t:free', name: 'Ring 2.6 1T', provider: 'openrouter', icon: '💍' },
 ];
 
 type Message = { role: 'user' | 'assistant'; content: string };
