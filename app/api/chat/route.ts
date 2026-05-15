@@ -39,7 +39,7 @@ export async function POST(req: Request) {
       );
     }
 
-    const stream = await client.chat.completions.create({
+    const stream: any = await client.chat.completions.create({
       model: model,
       messages,
       stream: true,
@@ -48,7 +48,7 @@ export async function POST(req: Request) {
       top_p: 0.9,
       frequency_penalty: 0.5,
       presence_penalty: 0.3,
-    } as any);
+    });
 
     const encoder = new TextEncoder();
     let lastText = '';
