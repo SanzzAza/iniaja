@@ -2,29 +2,32 @@
 import { useState, useRef, useEffect } from 'react';
 
 const MODELS = [
-  // Cerebras
-  { id: 'llama3.1-8b', name: 'Llama 3.1 8B', provider: 'cerebras' },
-  { id: 'qwen-3-235b-a22b-instruct-2507', name: 'Qwen 3 235B', provider: 'cerebras' },
-  { id: 'gpt-oss-120b', name: 'GPT-OSS 120B', provider: 'cerebras' },
-  { id: 'zai-glm-4.7', name: 'GLM 4.7', provider: 'cerebras' },
-
-  // OpenRouter
-  { id: 'deepseek/deepseek-v4-flash:free', name: 'DeepSeek V4 Flash', provider: 'openrouter' },
-  { id: 'minimax/minimax-m2.5:free', name: 'MiniMax M2.5', provider: 'openrouter' },
-  { id: 'nvidia/nemotron-3-super-120b-a12b:free', name: 'Nemotron 3 Super', provider: 'openrouter' },
-  { id: 'inclusionai/ring-2.6-1t:free', name: 'Ring 2.6 1T', provider: 'openrouter' },
+  { id: 'llama3.1-8b', name: 'Llama 3.1 8B', provider: 'cerebras', tag: 'Fast' },
+  { id: 'qwen-3-235b-a22b-instruct-2507', name: 'Qwen 3 235B', provider: 'cerebras', tag: 'Preview' },
+  { id: 'gpt-oss-120b', name: 'GPT-OSS 120B', provider: 'cerebras', tag: 'Fast' },
+  { id: 'zai-glm-4.7', name: 'GLM 4.7', provider: 'cerebras', tag: 'Fast' },
+  { id: 'deepseek/deepseek-v4-flash:free', name: 'DeepSeek V4 Flash', provider: 'openrouter', tag: 'Free' },
+  { id: 'minimax/minimax-m2.5:free', name: 'MiniMax M2.5', provider: 'openrouter', tag: 'Free' },
+  { id: 'nvidia/nemotron-3-super-120b-a12b:free', name: 'Nemotron 3 Super', provider: 'openrouter', tag: 'Free' },
+  { id: 'inclusionai/ring-2.6-1t:free', name: 'Ring 2.6 1T', provider: 'openrouter', tag: 'Free' },
 ];
 
 type Message = { role: 'user' | 'assistant'; content: string };
+type Chat = { id: string; title: string; messages: Message[]; model: typeof MODELS[0] };
 
-export default function Chat() {
-  const [messages, setMessages] = useState<Message[]>([]);
+export default function App() {
+  const [chats, setChats] = useState<Chat[]>([]);
+  const [activeChatId, setActiveChatId] = useState<string | null>(null);
   const [input, setInput] = useState('');
   const [model, setModel] = useState(MODELS[0]);
   const [loading, setLoading] = useState(false);
   const [showModelMenu, setShowModelMenu] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
   const bottomRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  const activeChat = chats.find(c => c.id === activeChatId);
+  const messages = activeChat?.messages || [];
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -33,16 +36,41 @@ export default function Chat() {
   useEffect(() => {
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto';
-      textareaRef.current.style.height = Math.min(textareaRef.current.scrollHeight, 200) + 'px';
+      textareaRef.current.style.height = Math.min(textareaRef.current.scrollHeight, 160) + 'px';
     }
   }, [input]);
+
+  function newChat() {
+    setActiveChatId(null);
+    setInput('');
+  }
 
   async function sendMessage() {
     if (!input.trim() || loading) return;
 
+    let chatId = activeChatId;
+    let currentChats = chats;
     const userMsg: Message = { role: 'user', content: input };
-    const newMessages = [...messages, userMsg];
-    setMessages(newMessages);
+
+    if (!chatId) {
+      const newId = Date.now().toString();
+      const newChat: Chat = {
+        id: newId,
+        title: input.slice(0, 40),
+        messages: [],
+        model,
+      };
+      currentChats = [newChat, ...chats];
+      setChats(currentChats);
+      setActiveChatId(newId);
+      chatId = newId;
+    }
+
+    const newMessages = [...(currentChats.find(c => c.id === chatId)?.messages || []), userMsg];
+
+    setChats(prev => prev.map(c =>
+      c.id === chatId ? { ...c, messages: newMessages } : c
+    ));
     setInput('');
     setLoading(true);
 
@@ -66,26 +94,33 @@ export default function Chat() {
       const decoder = new TextDecoder();
       let aiMessage = '';
 
-      setMessages([...newMessages, { role: 'assistant', content: '' }]);
+      setChats(prev => prev.map(c =>
+        c.id === chatId ? { ...c, messages: [...newMessages, { role: 'assistant', content: '' }] } : c
+      ));
 
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
         aiMessage += decoder.decode(value, { stream: true });
-        setMessages([...newMessages, { role: 'assistant', content: aiMessage }]);
+        setChats(prev => prev.map(c =>
+          c.id === chatId ? { ...c, messages: [...newMessages, { role: 'assistant', content: aiMessage }] } : c
+        ));
       }
     } catch (error: any) {
-      setMessages([
-        ...newMessages,
-        { role: 'assistant', content: `Error: ${error.message}` },
-      ]);
+      setChats(prev => prev.map(c =>
+        c.id === chatId ? {
+          ...c,
+          messages: [...newMessages, { role: 'assistant', content: `Error: ${error.message}` }]
+        } : c
+      ));
     } finally {
       setLoading(false);
     }
   }
 
-  function clearChat() {
-    setMessages([]);
+  function deleteChat(id: string) {
+    setChats(prev => prev.filter(c => c.id !== id));
+    if (activeChatId === id) setActiveChatId(null);
   }
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
@@ -96,170 +131,277 @@ export default function Chat() {
   }
 
   return (
-    <div className="flex flex-col h-screen bg-[#0a0a0a] text-neutral-100">
-      
-      {/* Top Bar */}
-      <header className="border-b border-neutral-800 bg-[#0a0a0a]/80 backdrop-blur-md sticky top-0 z-10">
-        <div className="max-w-3xl mx-auto px-4 py-3 flex items-center justify-between">
-          
-          {/* Model Selector */}
-          <div className="relative">
+    <div className="flex h-screen bg-[#0f0f0f] text-white overflow-hidden">
+
+      {/* Sidebar */}
+      <aside className={`${sidebarOpen ? 'w-64' : 'w-0'} transition-all duration-300 flex-shrink-0 bg-[#141414] border-r border-white/5 flex flex-col overflow-hidden`}>
+        
+        {/* Sidebar Header */}
+        <div className="p-4 flex items-center justify-between border-b border-white/5">
+          <span className="font-semibold text-sm text-white/80">AI Chat</span>
+          <button
+            onClick={newChat}
+            className="w-7 h-7 rounded-lg bg-white/5 hover:bg-white/10 transition flex items-center justify-center"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+            </svg>
+          </button>
+        </div>
+
+        {/* Chat History */}
+        <div className="flex-1 overflow-y-auto p-2 space-y-1">
+          {chats.length === 0 ? (
+            <p className="text-xs text-white/30 text-center mt-8 px-4">No conversations yet</p>
+          ) : (
+            chats.map(chat => (
+              <div
+                key={chat.id}
+                onClick={() => setActiveChatId(chat.id)}
+                className={`group flex items-center justify-between px-3 py-2.5 rounded-xl cursor-pointer transition ${
+                  activeChatId === chat.id
+                    ? 'bg-white/10'
+                    : 'hover:bg-white/5'
+                }`}
+              >
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm text-white/80 truncate">{chat.title}</p>
+                  <p className="text-xs text-white/30 mt-0.5">{chat.model.name}</p>
+                </div>
+                <button
+                  onClick={(e) => { e.stopPropagation(); deleteChat(chat.id); }}
+                  className="opacity-0 group-hover:opacity-100 w-6 h-6 rounded-lg hover:bg-red-500/20 text-red-400 flex items-center justify-center transition flex-shrink-0 ml-1"
+                >
+                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            ))
+          )}
+        </div>
+
+        {/* Sidebar Footer */}
+        <div className="p-3 border-t border-white/5">
+          <div className="flex items-center gap-2 px-2 py-2 rounded-xl bg-white/5">
+            <div className="w-6 h-6 rounded-full bg-gradient-to-br from-violet-500 to-blue-500 flex-shrink-0" />
+            <span className="text-xs text-white/50 truncate">My AI Workspace</span>
+          </div>
+        </div>
+      </aside>
+
+      {/* Main Content */}
+      <div className="flex-1 flex flex-col min-w-0">
+
+        {/* Header */}
+        <header className="flex items-center justify-between px-4 py-3 border-b border-white/5 bg-[#0f0f0f]/80 backdrop-blur-xl">
+          <div className="flex items-center gap-3">
             <button
-              onClick={() => setShowModelMenu(!showModelMenu)}
-              className="flex items-center gap-2 px-3 py-1.5 rounded-lg hover:bg-neutral-900 transition text-sm font-medium"
+              onClick={() => setSidebarOpen(!sidebarOpen)}
+              className="w-8 h-8 rounded-lg hover:bg-white/5 transition flex items-center justify-center"
             >
-              <span>{model.name}</span>
-              <svg className="w-4 h-4 text-neutral-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              <svg className="w-4 h-4 text-white/50" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
               </svg>
             </button>
 
-            {showModelMenu && (
-              <>
-                <div 
-                  className="fixed inset-0 z-20" 
-                  onClick={() => setShowModelMenu(false)}
-                />
-                <div className="absolute top-full left-0 mt-2 w-72 bg-neutral-900 border border-neutral-800 rounded-xl shadow-2xl z-30 overflow-hidden">
-                  
-                  <div className="px-3 py-2 text-xs font-semibold text-neutral-500 uppercase tracking-wider border-b border-neutral-800">
-                    Cerebras
-                  </div>
-                  {MODELS.filter(m => m.provider === 'cerebras').map(m => (
-                    <button
-                      key={m.id}
-                      onClick={() => { setModel(m); setShowModelMenu(false); }}
-                      className={`w-full text-left px-3 py-2.5 hover:bg-neutral-800 transition flex items-center justify-between ${model.id === m.id ? 'bg-neutral-800' : ''}`}
-                    >
-                      <span className="text-sm">{m.name}</span>
-                      {model.id === m.id && (
-                        <svg className="w-4 h-4 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                        </svg>
-                      )}
-                    </button>
-                  ))}
+            {/* Model Selector */}
+            <div className="relative">
+              <button
+                onClick={() => setShowModelMenu(!showModelMenu)}
+                className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 transition"
+              >
+                <div className={`w-2 h-2 rounded-full ${model.provider === 'cerebras' ? 'bg-orange-400' : 'bg-green-400'}`} />
+                <span className="text-sm font-medium text-white/80">{model.name}</span>
+                <span className={`text-xs px-1.5 py-0.5 rounded-md font-medium ${
+                  model.tag === 'Free' ? 'bg-green-500/10 text-green-400' :
+                  model.tag === 'Preview' ? 'bg-purple-500/10 text-purple-400' :
+                  'bg-orange-500/10 text-orange-400'
+                }`}>{model.tag}</span>
+                <svg className="w-3.5 h-3.5 text-white/40" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
 
-                  <div className="px-3 py-2 text-xs font-semibold text-neutral-500 uppercase tracking-wider border-b border-t border-neutral-800">
-                    OpenRouter
+              {showModelMenu && (
+                <>
+                  <div className="fixed inset-0 z-20" onClick={() => setShowModelMenu(false)} />
+                  <div className="absolute top-full left-0 mt-2 w-72 bg-[#1a1a1a] border border-white/10 rounded-2xl shadow-2xl shadow-black/50 z-30 overflow-hidden">
+                    <div className="p-2">
+                      <p className="text-xs font-semibold text-white/30 uppercase tracking-wider px-2 py-1.5">Cerebras</p>
+                      {MODELS.filter(m => m.provider === 'cerebras').map(m => (
+                        <button
+                          key={m.id}
+                          onClick={() => { setModel(m); setShowModelMenu(false); }}
+                          className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl hover:bg-white/5 transition ${model.id === m.id ? 'bg-white/8' : ''}`}
+                        >
+                          <div className="flex items-center gap-2.5">
+                            <div className="w-1.5 h-1.5 rounded-full bg-orange-400" />
+                            <span className="text-sm text-white/80">{m.name}</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs px-1.5 py-0.5 rounded-md bg-orange-500/10 text-orange-400 font-medium">{m.tag}</span>
+                            {model.id === m.id && (
+                              <svg className="w-4 h-4 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                              </svg>
+                            )}
+                          </div>
+                        </button>
+                      ))}
+
+                      <div className="my-1.5 border-t border-white/5" />
+
+                      <p className="text-xs font-semibold text-white/30 uppercase tracking-wider px-2 py-1.5">OpenRouter</p>
+                      {MODELS.filter(m => m.provider === 'openrouter').map(m => (
+                        <button
+                          key={m.id}
+                          onClick={() => { setModel(m); setShowModelMenu(false); }}
+                          className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl hover:bg-white/5 transition ${model.id === m.id ? 'bg-white/8' : ''}`}
+                        >
+                          <div className="flex items-center gap-2.5">
+                            <div className="w-1.5 h-1.5 rounded-full bg-green-400" />
+                            <span className="text-sm text-white/80">{m.name}</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs px-1.5 py-0.5 rounded-md bg-green-500/10 text-green-400 font-medium">{m.tag}</span>
+                            {model.id === m.id && (
+                              <svg className="w-4 h-4 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                              </svg>
+                            )}
+                          </div>
+                        </button>
+                      ))}
+                    </div>
                   </div>
-                  {MODELS.filter(m => m.provider === 'openrouter').map(m => (
+                </>
+              )}
+            </div>
+          </div>
+
+          {/* New Chat Button */}
+          <button
+            onClick={newChat}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 transition text-sm text-white/60 hover:text-white/80"
+          >
+            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+            </svg>
+            New chat
+          </button>
+        </header>
+
+        {/* Messages */}
+        <main className="flex-1 overflow-y-auto">
+          <div className="max-w-2xl mx-auto px-4 py-8">
+            {messages.length === 0 ? (
+              <div className="flex flex-col items-center justify-center h-[55vh] text-center">
+                <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-violet-500/20 to-blue-500/20 border border-white/10 flex items-center justify-center mb-6">
+                  <svg className="w-8 h-8 text-violet-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
+                  </svg>
+                </div>
+                <h1 className="text-2xl font-semibold text-white/80 mb-2">What can I help with?</h1>
+                <p className="text-sm text-white/30">Using {model.name} — {model.provider}</p>
+
+                {/* Quick Prompts */}
+                <div className="grid grid-cols-2 gap-2 mt-8 w-full max-w-md">
+                  {[
+                    'Explain quantum computing',
+                    'Write a Python script',
+                    'Summarize a topic',
+                    'Debug my code',
+                  ].map(prompt => (
                     <button
-                      key={m.id}
-                      onClick={() => { setModel(m); setShowModelMenu(false); }}
-                      className={`w-full text-left px-3 py-2.5 hover:bg-neutral-800 transition flex items-center justify-between ${model.id === m.id ? 'bg-neutral-800' : ''}`}
+                      key={prompt}
+                      onClick={() => setInput(prompt)}
+                      className="px-4 py-3 rounded-xl bg-white/5 hover:bg-white/8 border border-white/5 hover:border-white/10 text-sm text-white/50 hover:text-white/70 transition text-left"
                     >
-                      <span className="text-sm">{m.name}</span>
-                      {model.id === m.id && (
-                        <svg className="w-4 h-4 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                        </svg>
-                      )}
+                      {prompt}
                     </button>
                   ))}
                 </div>
-              </>
+              </div>
+            ) : (
+              <div className="space-y-8">
+                {messages.map((m, i) => (
+                  <div key={i}>
+                    {m.role === 'user' ? (
+                      <div className="flex justify-end">
+                        <div className="max-w-[80%] px-4 py-3 bg-white/8 border border-white/8 rounded-2xl rounded-br-sm">
+                          <p className="text-[15px] leading-relaxed text-white/85 whitespace-pre-wrap">{m.content}</p>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex gap-3">
+                        <div className="w-7 h-7 rounded-xl bg-gradient-to-br from-violet-500 to-blue-500 flex-shrink-0 flex items-center justify-center text-[11px] font-bold mt-0.5">
+                          AI
+                        </div>
+                        <div className="flex-1 pt-0.5">
+                          {m.content ? (
+                            <p className="text-[15px] leading-relaxed text-white/80 whitespace-pre-wrap">{m.content}</p>
+                          ) : (
+                            <div className="flex items-center gap-1 h-6">
+                              <span className="w-1.5 h-1.5 bg-white/30 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                              <span className="w-1.5 h-1.5 bg-white/30 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                              <span className="w-1.5 h-1.5 bg-white/30 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ))}
+
+                {loading && messages[messages.length - 1]?.role === 'user' && (
+                  <div className="flex gap-3">
+                    <div className="w-7 h-7 rounded-xl bg-gradient-to-br from-violet-500 to-blue-500 flex-shrink-0 flex items-center justify-center text-[11px] font-bold">
+                      AI
+                    </div>
+                    <div className="flex items-center gap-1 h-8">
+                      <span className="w-1.5 h-1.5 bg-white/30 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                      <span className="w-1.5 h-1.5 bg-white/30 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                      <span className="w-1.5 h-1.5 bg-white/30 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                    </div>
+                  </div>
+                )}
+                <div ref={bottomRef} />
+              </div>
             )}
           </div>
+        </main>
 
-          {/* Clear Button */}
-          {messages.length > 0 && (
-            <button
-              onClick={clearChat}
-              className="text-sm text-neutral-400 hover:text-neutral-100 transition px-3 py-1.5 rounded-lg hover:bg-neutral-900"
-            >
-              New chat
-            </button>
-          )}
-        </div>
-      </header>
-
-      {/* Chat Area */}
-      <main className="flex-1 overflow-y-auto">
-        <div className="max-w-3xl mx-auto px-4 py-8">
-          
-          {messages.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-[60vh] text-center">
-              <h1 className="text-3xl font-semibold text-neutral-200 mb-2">
-                What can I help with?
-              </h1>
-              <p className="text-neutral-500">
-                Using {model.name}
-              </p>
+        {/* Input */}
+        <footer className="px-4 pb-6 pt-2 bg-[#0f0f0f]">
+          <div className="max-w-2xl mx-auto">
+            <div className="relative flex items-end gap-3 bg-[#1a1a1a] border border-white/8 rounded-2xl p-3 focus-within:border-white/15 transition shadow-xl shadow-black/20">
+              <textarea
+                ref={textareaRef}
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={handleKeyDown}
+                disabled={loading}
+                placeholder={`Message ${model.name}...`}
+                rows={1}
+                className="flex-1 bg-transparent px-2 py-1.5 outline-none resize-none text-[15px] text-white/85 placeholder:text-white/25 disabled:opacity-50 max-h-[160px] leading-relaxed"
+              />
+              <button
+                onClick={sendMessage}
+                disabled={loading || !input.trim()}
+                className="flex-shrink-0 w-9 h-9 rounded-xl bg-gradient-to-br from-violet-500 to-blue-500 hover:from-violet-400 hover:to-blue-400 disabled:from-white/5 disabled:to-white/5 disabled:cursor-not-allowed transition flex items-center justify-center shadow-lg"
+              >
+                <svg className="w-4 h-4 text-white disabled:text-white/20" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 10l7-7m0 0l7 7m-7-7v18" />
+                </svg>
+              </button>
             </div>
-          ) : (
-            <div className="space-y-6">
-              {messages.map((m, i) => (
-                <div key={i} className="group">
-                  {m.role === 'user' ? (
-                    <div className="flex justify-end">
-                      <div className="max-w-[85%] bg-neutral-800 px-4 py-3 rounded-2xl rounded-br-md">
-                        <p className="whitespace-pre-wrap text-[15px] leading-relaxed">{m.content}</p>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="flex gap-3">
-                      <div className="w-7 h-7 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex-shrink-0 flex items-center justify-center text-xs font-semibold">
-                        AI
-                      </div>
-                      <div className="flex-1 pt-0.5">
-                        <p className="whitespace-pre-wrap text-[15px] leading-relaxed text-neutral-200">
-                          {m.content || <span className="inline-block w-2 h-4 bg-neutral-400 animate-pulse" />}
-                        </p>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              ))}
-
-              {loading && messages[messages.length - 1]?.role === 'user' && (
-                <div className="flex gap-3">
-                  <div className="w-7 h-7 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex-shrink-0 flex items-center justify-center text-xs font-semibold">
-                    AI
-                  </div>
-                  <div className="flex items-center gap-1 pt-2">
-                    <span className="w-1.5 h-1.5 bg-neutral-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                    <span className="w-1.5 h-1.5 bg-neutral-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                    <span className="w-1.5 h-1.5 bg-neutral-500 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
-                  </div>
-                </div>
-              )}
-
-              <div ref={bottomRef} />
-            </div>
-          )}
-        </div>
-      </main>
-
-      {/* Input Area */}
-      <footer className="border-t border-neutral-800 bg-[#0a0a0a]">
-        <div className="max-w-3xl mx-auto px-4 py-4">
-          <div className="relative flex items-end gap-2 bg-neutral-900 border border-neutral-800 rounded-2xl p-2 focus-within:border-neutral-700 transition">
-            <textarea
-              ref={textareaRef}
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={handleKeyDown}
-              disabled={loading}
-              placeholder="Message AI..."
-              rows={1}
-              className="flex-1 bg-transparent px-3 py-2 outline-none resize-none text-[15px] placeholder:text-neutral-500 disabled:opacity-50 max-h-[200px]"
-            />
-            <button
-              onClick={sendMessage}
-              disabled={loading || !input.trim()}
-              className="flex-shrink-0 w-9 h-9 bg-white text-black rounded-lg hover:bg-neutral-200 disabled:bg-neutral-700 disabled:text-neutral-500 disabled:cursor-not-allowed transition flex items-center justify-center"
-            >
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M5 10l7-7m0 0l7 7m-7-7v18" />
-              </svg>
-            </button>
+            <p className="text-xs text-white/20 text-center mt-3">
+              Press Enter to send, Shift+Enter for new line
+            </p>
           </div>
-          <p className="text-xs text-neutral-600 text-center mt-2">
-            AI can make mistakes. Verify important info.
-          </p>
-        </div>
-      </footer>
+        </footer>
+      </div>
     </div>
   );
 }
