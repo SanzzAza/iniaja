@@ -606,51 +606,82 @@ export default function App() {
               </svg>
             </button>
 
-            {/* Model dropdown */}
+            {/* Model picker — relative wrapper */}
             <div className="relative">
-              <button
-                onClick={() => setShowModelMenu(s => !s)}
-                className="flex items-center gap-2 px-3 py-1.5 rounded-xl transition-all"
-                style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.07)' }}
-              >
-                <div className={`w-2 h-2 rounded-full flex-shrink-0 ${PROVIDER_META[model.provider]?.dot}`} />
-                <span className="text-[13px] font-medium" style={{ color: 'rgba(255,255,255,0.75)' }}>{model.name}</span>
-                <span className={`text-[10px] px-1.5 py-0.5 rounded-md font-medium ${TAG_STYLE[model.tag]}`}>{model.tag}</span>
-                <svg className={`w-3 h-3 transition-transform ${showModelMenu ? 'rotate-180' : ''}`} style={{ color: 'rgba(255,255,255,0.25)' }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-                </svg>
-              </button>
+            {/* Model picker button */}
+            <button
+              onClick={() => setShowModelMenu(s => !s)}
+              className="flex items-center gap-2 px-3 py-1.5 rounded-xl transition-all"
+              style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.07)' }}
+            >
+              <div className={`w-2 h-2 rounded-full flex-shrink-0 ${PROVIDER_META[model.provider]?.dot}`} />
+              <span className="text-[13px] font-medium max-w-[120px] truncate" style={{ color: 'rgba(255,255,255,0.75)' }}>{model.name}</span>
+              <span className={`text-[10px] px-1.5 py-0.5 rounded-md font-medium hidden sm:inline ${TAG_STYLE[model.tag]}`}>{model.tag}</span>
+              <svg className={`w-3 h-3 transition-transform ${showModelMenu ? 'rotate-180' : ''}`} style={{ color: 'rgba(255,255,255,0.25)' }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
 
-              {showModelMenu && (
-                <>
-                  <div className="fixed inset-0 z-20" onClick={() => setShowModelMenu(false)} />
-                  <div className="absolute top-full left-0 mt-2 w-80 z-30 overflow-hidden rounded-2xl" style={{ background: '#141420', border: '1px solid rgba(255,255,255,0.09)', boxShadow: '0 24px 64px rgba(0,0,0,0.8)' }}>
-                    <div className="p-2" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
-                      <div className="flex items-center gap-2 px-3 py-2 rounded-xl" style={{ background: 'rgba(255,255,255,0.05)' }}>
-                        <svg className="w-3.5 h-3.5 flex-shrink-0" style={{ color: 'rgba(255,255,255,0.2)' }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                        </svg>
-                        <input
-                          ref={searchRef}
-                          value={modelSearch}
-                          onChange={e => setModelSearch(e.target.value)}
-                          placeholder="Search models..."
-                          className="bg-transparent outline-none w-full text-[13px]"
-                          style={{ color: 'rgba(255,255,255,0.7)' }}
-                        />
-                      </div>
-                    </div>
-                    <div className="max-h-[62vh] overflow-y-auto p-2">
-                      {modelSearch ? (
-                        filtered.length === 0
-                          ? <p className="text-xs text-center py-6" style={{ color: 'rgba(255,255,255,0.2)' }}>No results</p>
-                          : filtered.map(m => <ModelOption key={m.id} m={m} selected={model.id === m.id} onSelect={() => { setModel(m); setShowModelMenu(false); }} />)
-                      ) : MODELS.map(m => <ModelOption key={m.id} m={m} selected={model.id === m.id} onSelect={() => { setModel(m); setShowModelMenu(false); }} />)}
+            {/* ── Model picker: bottom sheet on mobile, dropdown on desktop ── */}
+            {showModelMenu && (
+              <>
+                {/* Backdrop */}
+                <div
+                  className="fixed inset-0 z-40 fade-in"
+                  style={{ background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(3px)' }}
+                  onClick={() => setShowModelMenu(false)}
+                />
+
+                {/* Bottom sheet (mobile) / Dropdown (desktop) */}
+                <div
+                  className="fixed z-50 fade-in
+                    bottom-0 left-0 right-0 rounded-t-3xl
+                    md:absolute md:bottom-auto md:top-full md:left-0 md:right-auto md:rounded-2xl md:w-80 md:mt-2"
+                  style={{ background: '#141420', border: '1px solid rgba(255,255,255,0.09)', boxShadow: '0 -8px 48px rgba(0,0,0,0.8)' }}
+                >
+                  {/* Drag handle (mobile only) */}
+                  <div className="flex justify-center pt-3 pb-1 md:hidden">
+                    <div className="w-10 h-1 rounded-full" style={{ background: 'rgba(255,255,255,0.15)' }} />
+                  </div>
+
+                  {/* Title */}
+                  <div className="px-4 pt-3 pb-2 md:pt-2">
+                    <p className="text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: 'rgba(255,255,255,0.25)' }}>Select Model</p>
+                    {/* Search */}
+                    <div className="flex items-center gap-2 px-3 py-2.5 rounded-xl" style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.07)' }}>
+                      <svg className="w-3.5 h-3.5 flex-shrink-0" style={{ color: 'rgba(255,255,255,0.25)' }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                      </svg>
+                      <input
+                        ref={searchRef}
+                        value={modelSearch}
+                        onChange={e => setModelSearch(e.target.value)}
+                        placeholder="Search models..."
+                        className="bg-transparent outline-none w-full text-[14px]"
+                        style={{ color: 'rgba(255,255,255,0.8)' }}
+                      />
+                      {modelSearch && (
+                        <button onClick={() => setModelSearch('')} style={{ color: 'rgba(255,255,255,0.3)' }}>
+                          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                        </button>
+                      )}
                     </div>
                   </div>
-                </>
-              )}
-            </div>
+
+                  {/* Model list — scrollable */}
+                  <div className="overflow-y-auto px-2 pb-6 md:pb-2" style={{ maxHeight: '55vh' }}>
+                    {(modelSearch ? filtered : MODELS).length === 0 ? (
+                      <p className="text-xs text-center py-8" style={{ color: 'rgba(255,255,255,0.2)' }}>No results</p>
+                    ) : (modelSearch ? filtered : MODELS).map(m => (
+                      <ModelOption key={m.id} m={m} selected={model.id === m.id} onSelect={() => { setModel(m); setShowModelMenu(false); }} />
+                    ))}
+                  </div>
+                </div>
+              </>
+            )}
+            </div> {/* end relative wrapper */}
           </div>
 
           <button
