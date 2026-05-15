@@ -15,6 +15,10 @@ export async function POST(req: Request) {
         apiKey: process.env.CEREBRAS_API_KEY!,
         baseURL: 'https://api.cerebras.ai/v1',
       },
+      google: {
+        apiKey: process.env.GOOGLE_API_KEY!,
+        baseURL: 'https://generativelanguage.googleapis.com/v1beta/openai/',
+      },
     };
 
     if (!config[provider]) {
@@ -55,18 +59,12 @@ export async function POST(req: Request) {
     });
   } catch (error: any) {
     console.error('API Error:', error);
-    
-    // Better error message
+
     let errorMsg = 'Internal server error';
-    if (error.status === 404) {
-      errorMsg = `Model "${error.model || 'unknown'}" tidak ditemukan. Coba model lain.`;
-    } else if (error.status === 401) {
-      errorMsg = 'API key tidak valid. Cek environment variable.';
-    } else if (error.status === 429) {
-      errorMsg = 'Rate limit tercapai. Coba lagi nanti.';
-    } else if (error.message) {
-      errorMsg = error.message;
-    }
+    if (error.status === 404) errorMsg = 'Model tidak ditemukan. Coba model lain.';
+    else if (error.status === 401) errorMsg = 'API key tidak valid.';
+    else if (error.status === 429) errorMsg = 'Rate limit. Coba lagi nanti.';
+    else if (error.message) errorMsg = error.message;
 
     return new Response(
       JSON.stringify({ error: errorMsg, status: error.status }),
