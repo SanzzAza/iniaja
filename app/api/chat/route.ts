@@ -39,29 +39,42 @@ export async function POST(req: Request) {
       );
     }
 
-    // Cerebras only supports: model, messages, stream, temperature, max_tokens
-    // Google Gemini also has issues with penalty params
-    // Keep params minimal and safe across all providers
-    const baseParams = {
-      model,
-      messages,
-      stream: true as const,
-      temperature: 0.7,
-      max_tokens: 2048,
-    };
+    // Build params per-provider to avoid 400 errors from unsupported fields
+    let completionParams: any;
 
-    const extraParams = (provider === 'cerebras' || provider === 'google')
-      ? {}
-      : {
-          top_p: 0.9,
-          frequency_penalty: 0.5,
-          presence_penalty: 0.3,
-        };
+    if (provider === 'cerebras') {
+      // Cerebras only accepts: model, messages, stream, temperature, max_completion_tokens
+      completionParams = {
+        model,
+        messages,
+        stream: true,
+        temperature: 0.7,
+        max_completion_tokens: 8192,
+      };
+    } else if (provider === 'google') {
+      // Google Gemini via OpenAI-compat: no penalty params
+      completionParams = {
+        model,
+        messages,
+        stream: true,
+        temperature: 0.7,
+        max_tokens: 2048,
+      };
+    } else {
+      // OpenRouter & GitHub Models: full params supported
+      completionParams = {
+        model,
+        messages,
+        stream: true,
+        temperature: 0.7,
+        max_tokens: 2048,
+        top_p: 0.9,
+        frequency_penalty: 0.5,
+        presence_penalty: 0.3,
+      };
+    }
 
-    const stream: any = await client.chat.completions.create({
-      ...baseParams,
-      ...extraParams,
-    });
+    const stream: any = await client.chat.completions.create(completionParams);
 
     const encoder = new TextEncoder();
     let lastText = '';
