@@ -2,14 +2,23 @@
 import { useState, useRef, useEffect } from 'react';
 
 const MODELS = [
+  // Cerebras
   { id: 'llama3.1-8b', name: 'Llama 3.1 8B', provider: 'cerebras', tag: 'Fast' },
   { id: 'qwen-3-235b-a22b-instruct-2507', name: 'Qwen 3 235B', provider: 'cerebras', tag: 'Preview' },
   { id: 'gpt-oss-120b', name: 'GPT-OSS 120B', provider: 'cerebras', tag: 'Fast' },
   { id: 'zai-glm-4.7', name: 'GLM 4.7', provider: 'cerebras', tag: 'Fast' },
+
+  // OpenRouter
   { id: 'deepseek/deepseek-v4-flash:free', name: 'DeepSeek V4 Flash', provider: 'openrouter', tag: 'Free' },
   { id: 'minimax/minimax-m2.5:free', name: 'MiniMax M2.5', provider: 'openrouter', tag: 'Free' },
   { id: 'nvidia/nemotron-3-super-120b-a12b:free', name: 'Nemotron 3 Super', provider: 'openrouter', tag: 'Free' },
   { id: 'inclusionai/ring-2.6-1t:free', name: 'Ring 2.6 1T', provider: 'openrouter', tag: 'Free' },
+
+  // Google Gemini
+  { id: 'gemini-2.0-flash', name: 'Gemini 2.0 Flash', provider: 'google', tag: 'Fast' },
+  { id: 'gemini-2.0-flash-lite', name: 'Gemini 2.0 Flash Lite', provider: 'google', tag: 'Fast' },
+  { id: 'gemini-1.5-flash', name: 'Gemini 1.5 Flash', provider: 'google', tag: 'Free' },
+  { id: 'gemini-1.5-flash-8b', name: 'Gemini 1.5 Flash 8B', provider: 'google', tag: 'Free' },
 ];
 
 type Message = { role: 'user' | 'assistant'; content: string };
@@ -54,19 +63,22 @@ export default function App() {
 
     if (!chatId) {
       const newId = Date.now().toString();
-      const newChat: Chat = {
+      const newChatObj: Chat = {
         id: newId,
         title: input.slice(0, 40),
         messages: [],
         model,
       };
-      currentChats = [newChat, ...chats];
+      currentChats = [newChatObj, ...chats];
       setChats(currentChats);
       setActiveChatId(newId);
       chatId = newId;
     }
 
-    const newMessages = [...(currentChats.find(c => c.id === chatId)?.messages || []), userMsg];
+    const newMessages = [
+      ...(currentChats.find(c => c.id === chatId)?.messages || []),
+      userMsg,
+    ];
 
     setChats(prev => prev.map(c =>
       c.id === chatId ? { ...c, messages: newMessages } : c
@@ -95,7 +107,9 @@ export default function App() {
       let aiMessage = '';
 
       setChats(prev => prev.map(c =>
-        c.id === chatId ? { ...c, messages: [...newMessages, { role: 'assistant', content: '' }] } : c
+        c.id === chatId
+          ? { ...c, messages: [...newMessages, { role: 'assistant', content: '' }] }
+          : c
       ));
 
       while (true) {
@@ -103,15 +117,16 @@ export default function App() {
         if (done) break;
         aiMessage += decoder.decode(value, { stream: true });
         setChats(prev => prev.map(c =>
-          c.id === chatId ? { ...c, messages: [...newMessages, { role: 'assistant', content: aiMessage }] } : c
+          c.id === chatId
+            ? { ...c, messages: [...newMessages, { role: 'assistant', content: aiMessage }] }
+            : c
         ));
       }
     } catch (error: any) {
       setChats(prev => prev.map(c =>
-        c.id === chatId ? {
-          ...c,
-          messages: [...newMessages, { role: 'assistant', content: `Error: ${error.message}` }]
-        } : c
+        c.id === chatId
+          ? { ...c, messages: [...newMessages, { role: 'assistant', content: `Error: ${error.message}` }] }
+          : c
       ));
     } finally {
       setLoading(false);
@@ -130,13 +145,31 @@ export default function App() {
     }
   }
 
+  // Provider dot color
+  function providerColor(provider: string) {
+    if (provider === 'cerebras') return 'bg-orange-400';
+    if (provider === 'google') return 'bg-blue-400';
+    return 'bg-green-400';
+  }
+
+  // Tag color
+  function tagColor(tag: string) {
+    if (tag === 'Free') return 'bg-green-500/10 text-green-400';
+    if (tag === 'Preview') return 'bg-purple-500/10 text-purple-400';
+    return 'bg-orange-500/10 text-orange-400';
+  }
+
+  const providers = [
+    { key: 'cerebras', label: 'Cerebras' },
+    { key: 'openrouter', label: 'OpenRouter' },
+    { key: 'google', label: 'Google Gemini' },
+  ];
+
   return (
     <div className="flex h-screen bg-[#0f0f0f] text-white overflow-hidden">
 
       {/* Sidebar */}
       <aside className={`${sidebarOpen ? 'w-64' : 'w-0'} transition-all duration-300 flex-shrink-0 bg-[#141414] border-r border-white/5 flex flex-col overflow-hidden`}>
-        
-        {/* Sidebar Header */}
         <div className="p-4 flex items-center justify-between border-b border-white/5">
           <span className="font-semibold text-sm text-white/80">AI Chat</span>
           <button
@@ -149,7 +182,6 @@ export default function App() {
           </button>
         </div>
 
-        {/* Chat History */}
         <div className="flex-1 overflow-y-auto p-2 space-y-1">
           {chats.length === 0 ? (
             <p className="text-xs text-white/30 text-center mt-8 px-4">No conversations yet</p>
@@ -159,9 +191,7 @@ export default function App() {
                 key={chat.id}
                 onClick={() => setActiveChatId(chat.id)}
                 className={`group flex items-center justify-between px-3 py-2.5 rounded-xl cursor-pointer transition ${
-                  activeChatId === chat.id
-                    ? 'bg-white/10'
-                    : 'hover:bg-white/5'
+                  activeChatId === chat.id ? 'bg-white/10' : 'hover:bg-white/5'
                 }`}
               >
                 <div className="flex-1 min-w-0">
@@ -181,7 +211,6 @@ export default function App() {
           )}
         </div>
 
-        {/* Sidebar Footer */}
         <div className="p-3 border-t border-white/5">
           <div className="flex items-center gap-2 px-2 py-2 rounded-xl bg-white/5">
             <div className="w-6 h-6 rounded-full bg-gradient-to-br from-violet-500 to-blue-500 flex-shrink-0" />
@@ -190,7 +219,7 @@ export default function App() {
         </div>
       </aside>
 
-      {/* Main Content */}
+      {/* Main */}
       <div className="flex-1 flex flex-col min-w-0">
 
         {/* Header */}
@@ -205,19 +234,17 @@ export default function App() {
               </svg>
             </button>
 
-            {/* Model Selector */}
+            {/* Model Dropdown */}
             <div className="relative">
               <button
                 onClick={() => setShowModelMenu(!showModelMenu)}
                 className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 transition"
               >
-                <div className={`w-2 h-2 rounded-full ${model.provider === 'cerebras' ? 'bg-orange-400' : 'bg-green-400'}`} />
+                <div className={`w-2 h-2 rounded-full ${providerColor(model.provider)}`} />
                 <span className="text-sm font-medium text-white/80">{model.name}</span>
-                <span className={`text-xs px-1.5 py-0.5 rounded-md font-medium ${
-                  model.tag === 'Free' ? 'bg-green-500/10 text-green-400' :
-                  model.tag === 'Preview' ? 'bg-purple-500/10 text-purple-400' :
-                  'bg-orange-500/10 text-orange-400'
-                }`}>{model.tag}</span>
+                <span className={`text-xs px-1.5 py-0.5 rounded-md font-medium ${tagColor(model.tag)}`}>
+                  {model.tag}
+                </span>
                 <svg className="w-3.5 h-3.5 text-white/40" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
                 </svg>
@@ -228,50 +255,35 @@ export default function App() {
                   <div className="fixed inset-0 z-20" onClick={() => setShowModelMenu(false)} />
                   <div className="absolute top-full left-0 mt-2 w-72 bg-[#1a1a1a] border border-white/10 rounded-2xl shadow-2xl shadow-black/50 z-30 overflow-hidden">
                     <div className="p-2">
-                      <p className="text-xs font-semibold text-white/30 uppercase tracking-wider px-2 py-1.5">Cerebras</p>
-                      {MODELS.filter(m => m.provider === 'cerebras').map(m => (
-                        <button
-                          key={m.id}
-                          onClick={() => { setModel(m); setShowModelMenu(false); }}
-                          className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl hover:bg-white/5 transition ${model.id === m.id ? 'bg-white/8' : ''}`}
-                        >
-                          <div className="flex items-center gap-2.5">
-                            <div className="w-1.5 h-1.5 rounded-full bg-orange-400" />
-                            <span className="text-sm text-white/80">{m.name}</span>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs px-1.5 py-0.5 rounded-md bg-orange-500/10 text-orange-400 font-medium">{m.tag}</span>
-                            {model.id === m.id && (
-                              <svg className="w-4 h-4 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                              </svg>
-                            )}
-                          </div>
-                        </button>
-                      ))}
-
-                      <div className="my-1.5 border-t border-white/5" />
-
-                      <p className="text-xs font-semibold text-white/30 uppercase tracking-wider px-2 py-1.5">OpenRouter</p>
-                      {MODELS.filter(m => m.provider === 'openrouter').map(m => (
-                        <button
-                          key={m.id}
-                          onClick={() => { setModel(m); setShowModelMenu(false); }}
-                          className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl hover:bg-white/5 transition ${model.id === m.id ? 'bg-white/8' : ''}`}
-                        >
-                          <div className="flex items-center gap-2.5">
-                            <div className="w-1.5 h-1.5 rounded-full bg-green-400" />
-                            <span className="text-sm text-white/80">{m.name}</span>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs px-1.5 py-0.5 rounded-md bg-green-500/10 text-green-400 font-medium">{m.tag}</span>
-                            {model.id === m.id && (
-                              <svg className="w-4 h-4 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                              </svg>
-                            )}
-                          </div>
-                        </button>
+                      {providers.map((prov, pi) => (
+                        <div key={prov.key}>
+                          {pi > 0 && <div className="my-1.5 border-t border-white/5" />}
+                          <p className="text-xs font-semibold text-white/30 uppercase tracking-wider px-2 py-1.5">
+                            {prov.label}
+                          </p>
+                          {MODELS.filter(m => m.provider === prov.key).map(m => (
+                            <button
+                              key={m.id}
+                              onClick={() => { setModel(m); setShowModelMenu(false); }}
+                              className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl hover:bg-white/5 transition ${model.id === m.id ? 'bg-white/8' : ''}`}
+                            >
+                              <div className="flex items-center gap-2.5">
+                                <div className={`w-1.5 h-1.5 rounded-full ${providerColor(m.provider)}`} />
+                                <span className="text-sm text-white/80">{m.name}</span>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <span className={`text-xs px-1.5 py-0.5 rounded-md font-medium ${tagColor(m.tag)}`}>
+                                  {m.tag}
+                                </span>
+                                {model.id === m.id && (
+                                  <svg className="w-4 h-4 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                                  </svg>
+                                )}
+                              </div>
+                            </button>
+                          ))}
+                        </div>
                       ))}
                     </div>
                   </div>
@@ -280,7 +292,6 @@ export default function App() {
             </div>
           </div>
 
-          {/* New Chat Button */}
           <button
             onClick={newChat}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 transition text-sm text-white/60 hover:text-white/80"
@@ -303,9 +314,8 @@ export default function App() {
                   </svg>
                 </div>
                 <h1 className="text-2xl font-semibold text-white/80 mb-2">What can I help with?</h1>
-                <p className="text-sm text-white/30">Using {model.name} — {model.provider}</p>
+                <p className="text-sm text-white/30">Using {model.name}</p>
 
-                {/* Quick Prompts */}
                 <div className="grid grid-cols-2 gap-2 mt-8 w-full max-w-md">
                   {[
                     'Explain quantum computing',
@@ -391,7 +401,7 @@ export default function App() {
                 disabled={loading || !input.trim()}
                 className="flex-shrink-0 w-9 h-9 rounded-xl bg-gradient-to-br from-violet-500 to-blue-500 hover:from-violet-400 hover:to-blue-400 disabled:from-white/5 disabled:to-white/5 disabled:cursor-not-allowed transition flex items-center justify-center shadow-lg"
               >
-                <svg className="w-4 h-4 text-white disabled:text-white/20" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M5 10l7-7m0 0l7 7m-7-7v18" />
                 </svg>
               </button>
