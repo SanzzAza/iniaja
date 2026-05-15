@@ -370,7 +370,11 @@ export default function App() {
       const res = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ messages: newMessages, model: model.id, provider: model.provider }),
+        body: JSON.stringify({
+          messages: newMessages.map(({ role, content }) => ({ role, content })),
+          model: model.id,
+          provider: model.provider,
+        }),
       });
 
       if (!res.ok) {
