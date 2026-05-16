@@ -1,33 +1,25 @@
 export const maxDuration = 60;
 
 function jsonError(message: string, status = 400) {
-  return new Response(JSON.stringify({ error: message }), {
-    status,
-    headers: {
-      "Content-Type": "application/json",
-    },
-  });
+  return Response.json({ error: message }, { status });
 }
 
 export async function POST(req: Request) {
   try {
     const { prompt } = await req.json();
 
-    if (!prompt) {
-      return jsonError("Prompt kosong");
+    if (!prompt || typeof prompt !== "string") {
+      return jsonError("Prompt gambar belum diisi.", 400);
     }
 
-    const token =
-      process.env.HUGGINGFACE_API_KEY ||
-      process.env.HF_TOKEN;
+    const token = process.env.HF_TOKEN || process.env.HUGGINGFACE_API_KEY;
 
     if (!token) {
-      return jsonError("HF_TOKEN belum diisi", 500);
+      return jsonError("HF_TOKEN belum diisi di Vercel.", 500);
     }
 
-    // SDXL TURBO
-    const response = await fetch(
-      "https://api-inference.huggingface.co/models/stabilityai/sdxl-turbo",
+    const res = await fetch(
+      "https://router.huggingface.co/hf-inference/models/ByteDance/Hyper-SD",
       {
         method: "POST",
         headers: {
@@ -36,6 +28,11 @@ export async function POST(req: Request) {
         },
         body: JSON.stringify({
           inputs: prompt,
+          parameters: {
+            width: 512,
+            height: 512,
+            num_inference_steps: 4,
+          },
           options: {
             wait_for_model: true,
           },
@@ -43,33 +40,18 @@ export async function POST(req: Request) {
       }
     );
 
-    if (!response.ok) {
-      const text = await response.text();
-
-      return jsonError(
-        `HF Error ${response.status}: ${text}`,
-        500
-      );
+    if (!res.ok) {
+      const text = await res.text();
+      return jsonError(`HF Error ${res.status}: ${text}`, 500);
     }
 
-    const buffer = await response.arrayBuffer();
-
+    const buffer = await res.arrayBuffer();
     const base64 = Buffer.from(buffer).toString("base64");
 
-    return new Response(
-      JSON.stringify({
-        image: `data:image/jpeg;base64,${base64}`,
-      }),
-      {
-        headers: {
-          "Content-Type": "application/json",
-        },
-      }
-    );
+    return Response.json({
+      image: `data:image/png;base64,${base64}`,
+    });
   } catch (err: any) {
-    return jsonError(
-      err.message || "Gagal generate gambar",
-      500
-    );
+    return jsonError(err?.message || "Gagal generate gambar.", 500);
   }
 }
