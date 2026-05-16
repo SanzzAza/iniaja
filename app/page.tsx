@@ -187,6 +187,7 @@ const MODELS = [
   { id: 'Qwen/Qwen3.6-35B-A3B', name: 'Qwen3.6 35B', provider: 'huggingface', tag: 'HF' },
   { id: 'meta-llama/Llama-3.1-8B-Instruct', name: 'Llama 3.1 8B', provider: 'huggingface', tag: 'HF' },
   { id: 'google/gemma-4-31b-it', name: 'Gemma 4 31B', provider: 'huggingface', tag: 'HF' },
+  { id: 'stabilityai/sdxl-turbo', name: 'SDXL Turbo', provider: 'image', tag: 'Image' },
 ];
 
 const PROVIDER_META: Record<string, { label: string; color: string; dot: string; logo: string }> = {
@@ -196,6 +197,7 @@ const PROVIDER_META: Record<string, { label: string; color: string; dot: string;
   github:     { label: 'GitHub Models', color: '#a855f7', dot: 'bg-purple-500',  logo: 'https://logo.clearbit.com/github.com' },
   nvidia:     { label: 'NVIDIA NIM',    color: '#76b900', dot: 'bg-lime-500',    logo: 'https://logo.clearbit.com/nvidia.com' },
   huggingface:{ label: 'Hugging Face',   color: '#f59e0b', dot: 'bg-yellow-500',  logo: 'https://logo.clearbit.com/huggingface.co' },
+  image:      { label: 'Image AI',       color: '#ec4899', dot: 'bg-pink-500',    logo: 'https://logo.clearbit.com/huggingface.co' },
 };
 
 const TAG_STYLE: Record<string, string> = {
@@ -203,6 +205,7 @@ const TAG_STYLE: Record<string, string> = {
   Preview: 'text-violet-400 bg-violet-950/60 border border-violet-800/50',
   Fast:    'text-amber-400 bg-amber-950/60 border border-amber-800/50',
   HF:      'text-yellow-300 bg-yellow-950/60 border border-yellow-800/50',
+  Image:   'text-pink-300 bg-pink-950/60 border border-pink-800/50',
 };
 
 const SUGGESTIONS = [
@@ -229,7 +232,7 @@ const LS_KEY_CHATS    = 'iniaja_chats';
 const LS_KEY_MODEL_ID = 'iniaja_model_id';
 
 type Attachment = { name: string; size: number; type: string; url?: string; dataUrl?: string };
-type Message = { role: 'user' | 'assistant'; content: string; timestamp: number; attachments?: Attachment[] };
+type Message = { role: 'user' | 'assistant'; content: string; timestamp: number; attachments?: Attachment[]; generatedImage?: string };
 type Chat    = { id: string; title: string; messages: Message[]; model: typeof MODELS[0] };
 
 // ── localStorage helpers ──────────────────────────────────────────────────────
@@ -763,6 +766,31 @@ export default function App() {
       .map(file => file.dataUrl as string);
   }
 
+  async function generateImage(prompt: string, chatId: string, baseMessages: Message[]) {
+    const res = await fetch('/api/image', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        prompt,
+        model: model.id,
+      }),
+    });
+
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Gagal generate gambar.');
+
+    const aiMsg: Message = {
+      role: 'assistant',
+      content: `✅ Gambar berhasil dibuat dengan ${model.name}.`,
+      timestamp: Date.now(),
+      generatedImage: data.image,
+    };
+
+    setChats(prev => prev.map(c =>
+      c.id === chatId ? { ...c, messages: [...baseMessages, aiMsg] } : c
+    ));
+  }
+
   // ── 🔄 Regenerate last assistant message ──
   const regenerate = useCallback(async () => {
     if (loading || !activeChat) return;
@@ -784,6 +812,23 @@ export default function App() {
     ));
     setError(null);
     setLoading(true);
+
+    if (model.provider === 'image') {
+      try {
+        const prompt = historyUpToUser[lastUserIdx]?.content || '';
+        await generateImage(prompt, chatId, historyUpToUser);
+      } catch (err: any) {
+        setError(err.message || 'Terjadi error.');
+        setChats(prev => prev.map(c =>
+          c.id === chatId ? { ...c, messages: [...historyUpToUser, { role: 'assistant', content: `⚠️ ${err.message}`, timestamp: Date.now() }] } : c
+        ));
+      } finally {
+        setLoading(false);
+        setStreamingIdx(null);
+        abortRef.current = null;
+      }
+      return;
+    }
 
     const controller = new AbortController();
     abortRef.current = controller;
@@ -864,6 +909,22 @@ export default function App() {
     setAttachments([]);
     setError(null);
     setLoading(true);
+
+    if (model.provider === 'image') {
+      try {
+        await generateImage(finalText, chatId, newMsgs);
+      } catch (err: any) {
+        setError(err.message || 'Terjadi error.');
+        setChats(prev => prev.map(c =>
+          c.id === chatId ? { ...c, messages: [...newMsgs, { role: 'assistant', content: `⚠️ ${err.message}`, timestamp: Date.now() }] } : c
+        ));
+      } finally {
+        setLoading(false);
+        setStreamingIdx(null);
+        abortRef.current = null;
+      }
+      return;
+    }
 
     const controller = new AbortController();
     abortRef.current = controller;
@@ -1376,6 +1437,16 @@ export default function App() {
                                 : null
                             }
 
+                            {m.generatedImage && (
+                              <div className="mt-3 overflow-hidden rounded-3xl border border-white/10 bg-black/20">
+                                <img src={m.generatedImage} alt="Generated image" className="w-full max-w-xl object-contain" />
+                                <div className="flex items-center justify-between gap-2 px-3 py-2 text-[11px] text-white/45">
+                                  <span>Generated image</span>
+                                  <a href={m.generatedImage} download="sdxl-image.png" className="text-pink-300 hover:text-pink-200">Download</a>
+                                </div>
+                              </div>
+                            )}
+
                             {/* Still thinking — no answer yet */}
                             {isThinking && !answer && <TypingDots />}
 
@@ -1464,7 +1535,7 @@ export default function App() {
                 onChange={e => setInput(e.target.value)}
                 onKeyDown={handleKey}
                 disabled={loading}
-                placeholder="Ask anything..."
+                placeholder={model.provider === 'image' ? 'Describe image yang mau dibuat...' : 'Ask anything...'}
                 rows={1}
                 className="w-full resize-none bg-transparent text-[15px] leading-relaxed outline-none disabled:opacity-40 sm:text-[15.5px]"
                 style={{
@@ -1521,8 +1592,14 @@ export default function App() {
 
                   <button
                     type="button"
+                    onClick={() => {
+                      const imgModel = MODELS.find(m => m.provider === 'image');
+                      if (imgModel) { setModel(imgModel); saveModelId(imgModel.id); }
+                      setInput(prev => prev || 'A cinematic futuristic robot in neon city, ultra detailed');
+                      textareaRef.current?.focus();
+                    }}
                     className="hidden h-10 items-center gap-2 rounded-2xl px-3 text-[13px] transition-all hover:scale-[1.02] sm:flex"
-                    style={{ background: 'rgba(255,255,255,.045)', border: '1px solid rgba(255,255,255,.08)', color: 'rgba(255,255,255,.72)' }}
+                    style={{ background: model.provider === 'image' ? 'rgba(236,72,153,.16)' : 'rgba(255,255,255,.045)', border: model.provider === 'image' ? '1px solid rgba(236,72,153,.28)' : '1px solid rgba(255,255,255,.08)', color: model.provider === 'image' ? 'rgba(249,168,212,.95)' : 'rgba(255,255,255,.72)' }}
                     title="Image"
                   >
                     <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
