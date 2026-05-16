@@ -224,6 +224,7 @@ const LS_KEY_CHATS    = 'iniaja_chats';
 const LS_KEY_MODEL_ID = 'iniaja_model_id';
 
 type Message = { role: 'user' | 'assistant'; content: string; timestamp: number };
+type Attachment = { name: string; size: number; type: string; url?: string };
 type Chat    = { id: string; title: string; messages: Message[]; model: typeof MODELS[0] };
 
 // ── localStorage helpers ──────────────────────────────────────────────────────
@@ -604,9 +605,12 @@ export default function App() {
   // Track which message is currently streaming
   const [streamingIdx, setStreamingIdx] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [attachments, setAttachments] = useState<Attachment[]>([]);
+  const [spotlight, setSpotlight] = useState({ x: 50, y: 24 });
 
   const bottomRef   = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const searchRef   = useRef<HTMLInputElement>(null);
   const sidebarSearchRef = useRef<HTMLInputElement>(null);
   const abortRef    = useRef<AbortController | null>(null);
@@ -614,6 +618,14 @@ export default function App() {
 
   const activeChat = chats.find(c => c.id === activeChatId);
   const messages   = activeChat?.messages || [];
+
+  useEffect(() => {
+    const move = (e: MouseEvent) => {
+      setSpotlight({ x: (e.clientX / window.innerWidth) * 100, y: (e.clientY / window.innerHeight) * 100 });
+    };
+    window.addEventListener('pointermove', move, { passive: true });
+    return () => window.removeEventListener('pointermove', move);
+  }, []);
 
   // ── Persist ──
   useEffect(() => { saveChats(chats); }, [chats]);
@@ -697,7 +709,7 @@ export default function App() {
     return () => window.removeEventListener('keydown', handler);
   }, [sidebarOpen]);
 
-  function newChat() { setActiveChatId(null); setInput(''); }
+  function newChat() { setActiveChatId(null); setInput(''); setAttachments([]); }
 
   function copyMsg(content: string, idx: number) {
     navigator.clipboard.writeText(content);
@@ -706,6 +718,27 @@ export default function App() {
   }
 
   function stopGeneration() { abortRef.current?.abort(); }
+
+  function formatFileSize(size: number) {
+    if (size < 1024 * 1024) return `${Math.max(1, Math.round(size / 1024))} KB`;
+    return `${(size / (1024 * 1024)).toFixed(1)} MB`;
+  }
+
+  function handleFiles(files: FileList | null) {
+    if (!files?.length) return;
+    const mapped = Array.from(files).slice(0, 4).map(file => ({
+      name: file.name,
+      size: file.size,
+      type: file.type || 'file',
+      url: file.type.startsWith('image/') ? URL.createObjectURL(file) : undefined,
+    }));
+    setAttachments(prev => [...prev, ...mapped].slice(0, 4));
+    setShortcutToast('Attachment added');
+  }
+
+  function removeAttachment(index: number) {
+    setAttachments(prev => prev.filter((_, i) => i !== index));
+  }
 
   // ── 🔄 Regenerate last assistant message ──
   const regenerate = useCallback(async () => {
@@ -780,15 +813,19 @@ export default function App() {
 
   const sendMessage = useCallback(async (override?: string) => {
     const text = (override ?? input).trim();
-    if (!text || loading) return;
+    if ((!text && attachments.length === 0) || loading) return;
+    const attachmentNote = attachments.length
+      ? `\n\n[Attached preview only: ${attachments.map(a => a.name).join(', ')}]`
+      : '';
+    const finalText = text || 'Analyze the attached file.';
 
     let chatId = activeChatId;
     let currentChats = chats;
-    const userMsg: Message = { role: 'user', content: text, timestamp: Date.now() };
+    const userMsg: Message = { role: 'user', content: finalText + attachmentNote, timestamp: Date.now() };
 
     if (!chatId) {
       const id = Date.now().toString();
-      const newC: Chat = { id, title: text.slice(0, 50), messages: [], model };
+      const newC: Chat = { id, title: finalText.slice(0, 50), messages: [], model };
       currentChats = [newC, ...chats];
       setChats(currentChats);
       setActiveChatId(id);
@@ -798,6 +835,7 @@ export default function App() {
     const newMsgs = [...(currentChats.find(c => c.id === chatId)?.messages ?? []), userMsg];
     setChats(prev => prev.map(c => c.id === chatId ? { ...c, messages: newMsgs } : c));
     setInput('');
+    setAttachments([]);
     setError(null);
     setLoading(true);
 
@@ -878,6 +916,12 @@ export default function App() {
     <div className="relative flex h-dvh overflow-hidden" style={{ background: '#070710', color: '#fff', fontFamily: "'Inter', -apple-system, sans-serif" }}>
       <style>{ANIM_STYLE}</style>
       <AmbientBackground />
+      <div
+        className="pointer-events-none fixed inset-0 z-0 transition-opacity duration-300"
+        style={{
+          background: `radial-gradient(650px circle at ${spotlight.x}% ${spotlight.y}%, rgba(99,102,241,.18), rgba(34,211,238,.07) 26%, transparent 58%)`,
+        }}
+      />
 
       {/* ── Shortcut toast ── */}
       {shortcutToast && <ShortcutToast label={shortcutToast} />}
@@ -1336,34 +1380,134 @@ export default function App() {
           </div>
         </main>
 
-        {/* Input footer */}
-        <footer className="relative z-10 px-4 pb-5 pt-2 flex-shrink-0" style={{ background: 'linear-gradient(180deg, transparent, rgba(10,10,15,0.92) 24%)' }}>
-          <div className="max-w-[1080px] mx-auto">
-            <div className="relative transition-all" style={{ background: 'rgba(19,19,30,0.78)', border: input.trim() ? '1px solid rgba(139,92,246,0.26)' : '1px solid rgba(255,255,255,0.09)', borderRadius: 24, backdropFilter: 'blur(22px)', boxShadow: input.trim() ? '0 18px 70px rgba(124,58,237,0.14)' : '0 18px 70px rgba(0,0,0,0.20)' }}>
+        {/* Input footer — NEXA style */}
+        <footer className="relative z-10 px-3 pb-4 pt-2 flex-shrink-0 sm:px-4 sm:pb-6" style={{ background: 'linear-gradient(180deg, transparent, rgba(3,5,18,0.94) 24%)' }}>
+          <div className="mx-auto max-w-[1120px]">
+            <div
+              className="lux-border relative overflow-hidden rounded-[28px] transition-all sm:rounded-[30px]"
+              style={{
+                background: 'linear-gradient(180deg, rgba(20,22,45,.88), rgba(12,13,31,.92))',
+                border: input.trim() ? '1px solid rgba(139,92,246,0.38)' : '1px solid rgba(255,255,255,0.12)',
+                backdropFilter: 'blur(26px)',
+                boxShadow: input.trim()
+                  ? '0 24px 90px rgba(124,58,237,0.20), inset 0 1px 0 rgba(255,255,255,.08)'
+                  : '0 24px 90px rgba(0,0,0,0.34), inset 0 1px 0 rgba(255,255,255,.06)',
+              }}
+            >
+              <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-violet-300/35 to-transparent" />
+              {attachments.length > 0 && (
+                <div className="flex gap-2 overflow-x-auto px-4 pt-4">
+                  {attachments.map((file, index) => (
+                    <div key={index} className="group relative flex min-w-[150px] items-center gap-3 rounded-2xl border border-white/10 bg-white/[.045] p-2.5">
+                      <div className="flex h-11 w-11 items-center justify-center overflow-hidden rounded-xl bg-violet-500/15 text-lg">
+                        {file.url ? <img src={file.url} alt={file.name} className="h-full w-full object-cover" /> : '📎'}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="truncate text-xs font-semibold text-white/80">{file.name}</p>
+                        <p className="text-[10px] text-white/35">{formatFileSize(file.size)}</p>
+                      </div>
+                      <button onClick={() => removeAttachment(index)} className="absolute -right-1.5 -top-1.5 flex h-6 w-6 items-center justify-center rounded-full border border-white/10 bg-black/70 text-xs text-white/70 opacity-100 transition hover:bg-red-500/80 hover:text-white">×</button>
+                    </div>
+                  ))}
+                </div>
+              )}
               <textarea
                 ref={textareaRef}
                 value={input}
                 onChange={e => setInput(e.target.value)}
                 onKeyDown={handleKey}
                 disabled={loading}
-                placeholder={`Message ${model.name}…`}
+                placeholder="Ask anything..."
                 rows={1}
-                className="w-full bg-transparent outline-none resize-none text-[14.5px] leading-relaxed disabled:opacity-40"
-                style={{ padding: '14px 52px 44px 18px', color: 'rgba(255,255,255,0.82)', maxHeight: 180 }}
+                className="w-full resize-none bg-transparent text-[15px] leading-relaxed outline-none disabled:opacity-40 sm:text-[15.5px]"
+                style={{
+                  padding: attachments.length ? '14px 18px 64px 18px' : '18px 18px 64px 18px',
+                  color: 'rgba(255,255,255,0.88)',
+                  maxHeight: 180,
+                }}
               />
-              <div className="absolute bottom-0 left-0 right-0 flex items-center justify-between px-3 pb-3">
-                {/* ── Char counter ── */}
-                <span className="text-[11px]" style={{ color: charCount > 0 ? 'rgba(255,255,255,0.22)' : 'rgba(255,255,255,0.12)' }}>
-                  {charCount > 0 ? `${charCount} chars` : '↵ send · ⇧↵ newline'}
-                </span>
+
+              <div className="absolute bottom-0 left-0 right-0 flex items-center justify-between gap-2 px-3 pb-3 sm:px-4 sm:pb-4">
                 <div className="flex items-center gap-2">
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    multiple
+                    accept="image/*,.pdf,.txt,.md,.doc,.docx,.js,.ts,.tsx,.json"
+                    className="hidden"
+                    onChange={e => handleFiles(e.target.files)}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="flex h-10 w-10 items-center justify-center rounded-2xl transition-all hover:scale-105"
+                    style={{ background: 'rgba(255,255,255,.055)', border: '1px solid rgba(255,255,255,.08)', color: 'rgba(255,255,255,.78)' }}
+                    title="Add file"
+                  >
+                    <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.9}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 5v14m7-7H5" />
+                    </svg>
+                  </button>
+
+                  <button
+                    type="button"
+                    className="hidden h-10 items-center gap-2 rounded-2xl px-3 text-[13px] transition-all hover:scale-[1.02] sm:flex"
+                    style={{ background: 'rgba(255,255,255,.045)', border: '1px solid rgba(255,255,255,.08)', color: 'rgba(255,255,255,.72)' }}
+                    title="Search"
+                  >
+                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35m1.35-5.15a6.5 6.5 0 11-13 0 6.5 6.5 0 0113 0z" />
+                    </svg>
+                    Search
+                  </button>
+
+                  <button
+                    type="button"
+                    className="hidden h-10 items-center gap-2 rounded-2xl px-3 text-[13px] transition-all hover:scale-[1.02] sm:flex"
+                    style={{ background: 'rgba(255,255,255,.045)', border: '1px solid rgba(255,255,255,.08)', color: 'rgba(255,255,255,.72)' }}
+                    title="Code"
+                  >
+                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M16 18l6-6-6-6M8 6l-6 6 6 6" />
+                    </svg>
+                  </button>
+
+                  <button
+                    type="button"
+                    className="hidden h-10 items-center gap-2 rounded-2xl px-3 text-[13px] transition-all hover:scale-[1.02] sm:flex"
+                    style={{ background: 'rgba(255,255,255,.045)', border: '1px solid rgba(255,255,255,.08)', color: 'rgba(255,255,255,.72)' }}
+                    title="Image"
+                  >
+                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M4 16l4.6-4.6a2 2 0 012.8 0L16 16m-2-2l1.6-1.6a2 2 0 012.8 0L20 14m-16 6h16a2 2 0 002-2V6a2 2 0 00-2-2H4a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                  </button>
+                </div>
+
+                <div className="pointer-events-none hidden flex-1 items-center justify-center text-center text-[12px] text-white/28 md:flex">
+                  Press Enter to send, Shift + Enter for new line
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <span className="hidden text-[12px] text-white/32 sm:inline">{Math.min(charCount, 4000)} / 4000</span>
+                  <button
+                    type="button"
+                    className="hidden h-10 w-10 items-center justify-center rounded-2xl transition-all hover:scale-105 sm:flex"
+                    style={{ background: 'rgba(255,255,255,.055)', border: '1px solid rgba(255,255,255,.08)', color: 'rgba(255,255,255,.72)' }}
+                    title="Enhance"
+                  >
+                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18 8l.45 1.58L20 10l-1.55.42L18 12l-.45-1.58L16 10l1.55-.42L18 8z" />
+                    </svg>
+                  </button>
+
                   {loading ? (
                     <button
                       onClick={stopGeneration}
-                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[12px] font-medium transition-all"
-                      style={{ background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.25)', color: 'rgba(248,113,113,0.9)' }}
+                      className="flex h-10 items-center gap-2 rounded-2xl px-4 text-[13px] font-semibold transition-all"
+                      style={{ background: 'rgba(239,68,68,0.13)', border: '1px solid rgba(239,68,68,0.26)', color: 'rgba(248,113,113,0.95)' }}
                     >
-                      <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24">
+                      <svg className="h-3.5 w-3.5" fill="currentColor" viewBox="0 0 24 24">
                         <rect x="6" y="6" width="12" height="12" rx="2" />
                       </svg>
                       Stop
@@ -1371,21 +1515,22 @@ export default function App() {
                   ) : (
                     <button
                       onClick={() => sendMessage()}
-                      disabled={!input.trim()}
-                      className="w-8 h-8 rounded-xl flex items-center justify-center transition-all"
+                      disabled={!input.trim() && attachments.length === 0}
+                      className="flex h-10 w-10 items-center justify-center rounded-2xl transition-all hover:scale-105 disabled:hover:scale-100 sm:h-11 sm:w-11"
                       style={{
-                        background:  input.trim() ? 'linear-gradient(135deg,#7c3aed,#4f46e5)' : 'rgba(255,255,255,0.05)',
-                        boxShadow:   input.trim() ? '0 4px 16px rgba(124,58,237,0.35)' : 'none',
+                        background: (input.trim() || attachments.length) ? 'linear-gradient(135deg,#8b5cf6,#4f46e5)' : 'rgba(255,255,255,0.055)',
+                        boxShadow: (input.trim() || attachments.length) ? '0 8px 28px rgba(124,58,237,0.46)' : 'none',
                       }}
                     >
-                      <svg className="w-3.5 h-3.5" style={{ color: input.trim() ? '#fff' : 'rgba(255,255,255,0.2)' }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 10l7-7m0 0l7 7m-7-7v18" />
+                      <svg className="h-4 w-4" style={{ color: (input.trim() || attachments.length) ? '#fff' : 'rgba(255,255,255,0.26)' }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 12l14-7-7 14-2-6-5-1z" />
                       </svg>
                     </button>
                   )}
                 </div>
               </div>
             </div>
+            <p className="mt-3 text-center text-[11px] text-white/25">AI can make mistakes. Please verify important information.</p>
           </div>
         </footer>
       </div>
