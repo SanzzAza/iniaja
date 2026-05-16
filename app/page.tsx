@@ -175,7 +175,7 @@ function CodeBlock({ code, lang }: { code: string; lang: string }) {
   };
   const displayLang = lang || 'plain';
   return (
-    <div className="my-4 rounded-2xl overflow-hidden" style={{ background: '#1a1b26', border: '1px solid rgba(255,255,255,0.07)' }}>
+    <div className="my-4 rounded-2xl overflow-hidden w-full" style={{ background: '#1a1b26', border: '1px solid rgba(255,255,255,0.07)' }}>
       <div className="flex items-center justify-between px-4 py-2.5" style={{ background: '#13141f', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
         <div className="flex items-center gap-3">
           <div className="flex gap-1.5">
@@ -202,7 +202,7 @@ function CodeBlock({ code, lang }: { code: string; lang: string }) {
           {copied ? 'Copied!' : 'Copy'}
         </button>
       </div>
-      <pre className="overflow-x-auto px-5 py-4 text-[13px] leading-[1.8] font-mono">
+      <pre className="overflow-x-auto px-5 py-4 text-[13px] leading-[1.8] font-mono w-full">
         <code>{tokenize(code, displayLang)}</code>
       </pre>
     </div>
