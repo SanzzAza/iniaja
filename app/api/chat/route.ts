@@ -94,6 +94,11 @@ export async function POST(req: Request) {
         apiKey: process.env.GITHUB_TOKEN!,
         baseURL: 'https://models.github.ai/inference',
       });
+    } else if (provider === 'nvidia') {
+      client = new OpenAI({
+        apiKey: process.env.NVIDIA_API_KEY!,
+        baseURL: 'https://integrate.api.nvidia.com/v1',
+      });
     } else {
       return new Response(JSON.stringify({ error: 'Invalid provider' }), { status: 400 });
     }
