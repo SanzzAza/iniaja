@@ -265,11 +265,20 @@ export async function POST(req: Request) {
         apiKey: process.env.NVIDIA_API_KEY,
         baseURL: 'https://integrate.api.nvidia.com/v1',
       });
+    } else if (provider === 'huggingface') {
+      if (!process.env.HF_TOKEN) {
+        return missingEnv('HF_TOKEN');
+      }
+
+      client = new OpenAI({
+        apiKey: process.env.HF_TOKEN,
+        baseURL: 'https://router.huggingface.co/v1',
+      });
     } else {
       return jsonError('Invalid provider', 400);
     }
 
-    const isGoogle = provider === 'google';
+    const simpleParams = provider === 'google' || provider === 'huggingface';
 
     const stream: any = await client.chat.completions.create({
       model,
@@ -277,7 +286,7 @@ export async function POST(req: Request) {
       stream: true,
       temperature: 0.7,
       max_tokens: 2048,
-      ...(isGoogle
+      ...(simpleParams
         ? {}
         : {
             top_p: 0.9,
