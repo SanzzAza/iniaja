@@ -186,8 +186,6 @@ const MODELS = [
   { id: 'qwen/qwen3.5-122b-a10b', name: 'Qwen 3.5 122B', provider: 'nvidia', tag: 'Free' },
   // Hugging Face Router
   { id: 'deepseek-ai/DeepSeek-V4-Pro:novita', name: 'DeepSeek V4 Pro', provider: 'huggingface', tag: 'HF' },
-  { id: 'deepseek-ai/DeepSeek-V4-Pro:together', name: 'DeepSeek V4 Pro', provider: 'huggingface', tag: 'HF' },
-  { id: 'deepseek-ai/DeepSeek-V4-Pro:fireworks-ai', name: 'DeepSeek V4 Pro', provider: 'huggingface', tag: 'HF' },
   { id: 'moonshotai/Kimi-K2.5:together', name: 'Kimi K2.5', provider: 'huggingface', tag: 'HF' },
   { id: 'nvidia/Kimi-K2.6-NVFP4:novita', name: 'Kimi K2.6 NVFP4', provider: 'huggingface', tag: 'HF' },
 ];
