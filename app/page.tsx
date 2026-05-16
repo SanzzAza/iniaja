@@ -223,8 +223,8 @@ const PROVIDER_STATS = [
 const LS_KEY_CHATS    = 'iniaja_chats';
 const LS_KEY_MODEL_ID = 'iniaja_model_id';
 
-type Message = { role: 'user' | 'assistant'; content: string; timestamp: number };
-type Attachment = { name: string; size: number; type: string; url?: string };
+type Attachment = { name: string; size: number; type: string; url?: string; dataUrl?: string };
+type Message = { role: 'user' | 'assistant'; content: string; timestamp: number; attachments?: Attachment[] };
 type Chat    = { id: string; title: string; messages: Message[]; model: typeof MODELS[0] };
 
 // ── localStorage helpers ──────────────────────────────────────────────────────
@@ -724,14 +724,26 @@ export default function App() {
     return `${(size / (1024 * 1024)).toFixed(1)} MB`;
   }
 
-  function handleFiles(files: FileList | null) {
+  function fileToDataUrl(file: File): Promise<string | undefined> {
+    if (!file.type.startsWith('image/')) return Promise.resolve(undefined);
+    return new Promise(resolve => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(typeof reader.result === 'string' ? reader.result : undefined);
+      reader.onerror = () => resolve(undefined);
+      reader.readAsDataURL(file);
+    });
+  }
+
+  async function handleFiles(files: FileList | null) {
     if (!files?.length) return;
-    const mapped = Array.from(files).slice(0, 4).map(file => ({
+    const selected = Array.from(files).slice(0, 4);
+    const mapped = await Promise.all(selected.map(async file => ({
       name: file.name,
       size: file.size,
       type: file.type || 'file',
       url: file.type.startsWith('image/') ? URL.createObjectURL(file) : undefined,
-    }));
+      dataUrl: await fileToDataUrl(file),
+    })));
     setAttachments(prev => [...prev, ...mapped].slice(0, 4));
     setShortcutToast('Attachment added');
   }
@@ -814,14 +826,16 @@ export default function App() {
   const sendMessage = useCallback(async (override?: string) => {
     const text = (override ?? input).trim();
     if ((!text && attachments.length === 0) || loading) return;
-    const attachmentNote = attachments.length
-      ? `\n\n[Attached preview only: ${attachments.map(a => a.name).join(', ')}]`
+    const sentAttachments = attachments;
+    const imageNames = sentAttachments.filter(a => a.type.startsWith('image/')).map(a => a.name);
+    const attachmentNote = sentAttachments.length
+      ? `\n\n${imageNames.length ? `Gambar terlampir: ${imageNames.join(', ')}` : `File terlampir: ${sentAttachments.map(a => a.name).join(', ')}`}`
       : '';
-    const finalText = text || 'Analyze the attached file.';
+    const finalText = text || (imageNames.length ? 'Tolong lihat gambar ini.' : 'Analyze the attached file.');
 
     let chatId = activeChatId;
     let currentChats = chats;
-    const userMsg: Message = { role: 'user', content: finalText + attachmentNote, timestamp: Date.now() };
+    const userMsg: Message = { role: 'user', content: finalText + attachmentNote, timestamp: Date.now(), attachments: sentAttachments };
 
     if (!chatId) {
       const id = Date.now().toString();
@@ -1292,7 +1306,27 @@ export default function App() {
                       {m.role === 'user' ? (
                         <div className="flex justify-end">
                           <div className="max-w-[78%]">
-                            <div className="px-4 py-3 rounded-2xl rounded-br-sm" style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.09)' }}>
+                            <div className="px-3 py-3 rounded-2xl rounded-br-sm" style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.09)' }}>
+                              {m.attachments?.length ? (
+                                <div className="mb-3 grid gap-2">
+                                  {m.attachments.map((file, idx) => (
+                                    file.dataUrl || file.url ? (
+                                      <div key={idx} className="overflow-hidden rounded-2xl border border-white/10 bg-black/20">
+                                        <img src={file.dataUrl || file.url} alt={file.name} className="max-h-72 w-full object-cover" />
+                                        <div className="flex items-center justify-between gap-2 px-3 py-2 text-[11px] text-white/55">
+                                          <span className="truncate">{file.name}</span>
+                                          <span>{formatFileSize(file.size)}</span>
+                                        </div>
+                                      </div>
+                                    ) : (
+                                      <div key={idx} className="flex items-center gap-2 rounded-2xl border border-white/10 bg-black/20 px-3 py-2 text-xs text-white/70">
+                                        <span>📎</span>
+                                        <span className="truncate">{file.name}</span>
+                                      </div>
+                                    )
+                                  ))}
+                                </div>
+                              ) : null}
                               <p className="text-[14.5px] leading-relaxed whitespace-pre-wrap" style={{ color: 'rgba(255,255,255,0.82)' }}>{m.content}</p>
                             </div>
                             <div className="flex items-center justify-end gap-2 mt-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
