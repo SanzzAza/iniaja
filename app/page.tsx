@@ -75,13 +75,27 @@ const MODELS = [
   { id: 'cohere/cohere-command-a', name: 'Command A', provider: 'github', tag: 'Fast' },
   { id: 'cohere/cohere-command-r-plus-08-2024', name: 'Command R+', provider: 'github', tag: 'Free' },
   { id: 'ai21-labs/ai21-jamba-1.5-large', name: 'Jamba 1.5 Large', provider: 'github', tag: 'Free' },
+  // NVIDIA NIM
+  { id: 'moonshotai/kimi-k2.6', name: 'Kimi K2.6', provider: 'nvidia', tag: 'Free' },
+  { id: 'mistralai/mistral-medium-3.5-128b', name: 'Mistral Medium 3.5', provider: 'nvidia', tag: 'Free' },
+  { id: 'nvidia/nemotron-3-nano-omni-30b-a3b-reasoning', name: 'Nemotron Nano Omni 30B', provider: 'nvidia', tag: 'Free' },
+  { id: 'deepseek-ai/deepseek-v4-flash', name: 'DeepSeek V4 Flash', provider: 'nvidia', tag: 'Free' },
+  { id: 'deepseek-ai/deepseek-v4-pro', name: 'DeepSeek V4 Pro', provider: 'nvidia', tag: 'Free' },
+  { id: 'z-ai/glm-5.1', name: 'GLM 5.1', provider: 'nvidia', tag: 'Free' },
+  { id: 'nvidia/ising-calibration-1-35b-a3b', name: 'Ising Calibration 35B', provider: 'nvidia', tag: 'Free' },
+  { id: 'minimaxai/minimax-m2.7', name: 'MiniMax M2.7', provider: 'nvidia', tag: 'Free' },
+  { id: 'google/gemma-4-31b-it', name: 'Gemma 4 31B', provider: 'nvidia', tag: 'Free' },
+  { id: 'mistralai/mistral-small-4-119b-2603', name: 'Mistral Small 4 119B', provider: 'nvidia', tag: 'Free' },
+  { id: 'nvidia/nemotron-3-super-120b-a12b', name: 'Nemotron 3 Super 120B', provider: 'nvidia', tag: 'Free' },
+  { id: 'qwen/qwen3.5-122b-a10b', name: 'Qwen 3.5 122B', provider: 'nvidia', tag: 'Free' },
 ];
 
-const PROVIDER_META: Record<string, { label: string; color: string; dot: string }> = {
-  cerebras:   { label: 'Cerebras',      color: '#f97316', dot: 'bg-orange-500' },
-  openrouter: { label: 'OpenRouter',    color: '#10b981', dot: 'bg-emerald-500' },
-  google:     { label: 'Google Gemini', color: '#3b82f6', dot: 'bg-blue-500' },
-  github:     { label: 'GitHub Models', color: '#a855f7', dot: 'bg-purple-500' },
+const PROVIDER_META: Record<string, { label: string; color: string; dot: string; logo: string }> = {
+  cerebras:   { label: 'Cerebras',      color: '#f97316', dot: 'bg-orange-500', logo: 'https://logo.clearbit.com/cerebras.net' },
+  openrouter: { label: 'OpenRouter',    color: '#10b981', dot: 'bg-emerald-500', logo: 'https://logo.clearbit.com/openrouter.ai' },
+  google:     { label: 'Google Gemini', color: '#3b82f6', dot: 'bg-blue-500',    logo: 'https://logo.clearbit.com/google.com' },
+  github:     { label: 'GitHub Models', color: '#a855f7', dot: 'bg-purple-500',  logo: 'https://logo.clearbit.com/github.com' },
+  nvidia:     { label: 'NVIDIA NIM',    color: '#76b900', dot: 'bg-lime-500',    logo: 'https://logo.clearbit.com/nvidia.com' },
 };
 
 const TAG_STYLE: Record<string, string> = {
@@ -409,7 +423,10 @@ function ModelOption({ m, selected, onSelect }: { m: typeof MODELS[0]; selected:
       }}
     >
       <div className="flex items-center gap-2.5 min-w-0">
-        <div className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${PROVIDER_META[m.provider]?.dot ?? 'bg-white/20'}`} />
+        {PROVIDER_META[m.provider]?.logo
+          ? <img src={PROVIDER_META[m.provider].logo} alt={PROVIDER_META[m.provider].label} className="w-4 h-4 rounded-full flex-shrink-0 object-contain bg-white/10" onError={(e: any) => { e.target.style.display='none'; }} />
+          : <div className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${PROVIDER_META[m.provider]?.dot ?? 'bg-white/20'}`} />
+        }
         <span className="text-[13px] truncate" style={{ color: selected ? 'rgba(255,255,255,0.95)' : 'rgba(255,255,255,0.6)' }}>{m.name}</span>
       </div>
       <div className="flex items-center gap-2 flex-shrink-0 ml-2">
@@ -867,7 +884,10 @@ export default function App() {
                   {chat.title}
                 </p>
                 <div className="flex items-center gap-1.5 mt-0.5">
-                  <div className={`w-1 h-1 rounded-full flex-shrink-0 ${PROVIDER_META[chat.model.provider]?.dot}`} />
+                  {PROVIDER_META[chat.model.provider]?.logo
+                    ? <img src={PROVIDER_META[chat.model.provider].logo} alt={PROVIDER_META[chat.model.provider].label} className="w-3 h-3 rounded-full flex-shrink-0 object-contain bg-white/10" onError={(e: any) => { e.target.style.display='none'; }} />
+                    : <div className={`w-1 h-1 rounded-full flex-shrink-0 ${PROVIDER_META[chat.model.provider]?.dot}`} />
+                  }
                   <p className="text-[11px] truncate" style={{ color: 'rgba(255,255,255,0.2)' }}>{chat.model.name}</p>
                 </div>
               </div>
@@ -920,7 +940,10 @@ export default function App() {
                 className="flex items-center gap-2 px-3 py-1.5 rounded-xl transition-all"
                 style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.07)' }}
               >
-                <div className={`w-2 h-2 rounded-full flex-shrink-0 ${PROVIDER_META[model.provider]?.dot}`} />
+                {PROVIDER_META[model.provider]?.logo
+                  ? <img src={PROVIDER_META[model.provider].logo} alt={PROVIDER_META[model.provider].label} className="w-4 h-4 rounded-full flex-shrink-0 object-contain bg-white/10" onError={(e: any) => { e.target.style.display='none'; }} />
+                  : <div className={`w-2 h-2 rounded-full flex-shrink-0 ${PROVIDER_META[model.provider]?.dot}`} />
+                }
                 <span className="text-[13px] font-medium max-w-[120px] truncate" style={{ color: 'rgba(255,255,255,0.75)' }}>{model.name}</span>
                 <span className={`text-[10px] px-1.5 py-0.5 rounded-md font-medium hidden sm:inline ${TAG_STYLE[model.tag]}`}>{model.tag}</span>
                 <svg className={`w-3 h-3 transition-transform ${showModelMenu ? 'rotate-180' : ''}`} style={{ color: 'rgba(255,255,255,0.25)' }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
