@@ -20,26 +20,31 @@ export async function POST(req: Request) {
       return jsonError('HF_TOKEN belum diisi di environment variable.', 500);
     }
 
-    // New HuggingFace Inference API format (v2)
-    const res = await fetch('https://api-inference.huggingface.co/models/black-forest-labs/FLUX.1-schnell', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        inputs: prompt,
-      }),
-    });
+    // HuggingFace new inference router URL
+    const res = await fetch(
+      'https://router.huggingface.co/hf-inference/models/black-forest-labs/FLUX.1-schnell/v1/images/generations',
+      {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          prompt: prompt,
+          num_inference_steps: 4,
+          response_format: 'b64_json',
+        }),
+      }
+    );
 
     if (!res.ok) {
-      let errMsg = `Error ${res.status}`;
+      let errMsg = `HuggingFace error ${res.status}`;
       try {
         const errText = await res.text();
         const stripped = errText.replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim();
         try {
           const errJson = JSON.parse(errText);
-          errMsg = errJson?.error || errJson?.message || errMsg;
+          errMsg = errJson?.error?.message || errJson?.error || errJson?.message || errMsg;
         } catch {
           if (stripped.length > 0 && stripped.length < 300) errMsg = stripped;
         }
@@ -47,17 +52,15 @@ export async function POST(req: Request) {
       return jsonError(errMsg, 500);
     }
 
-    const contentType = res.headers.get('content-type') || '';
+    const json = await res.json();
+    const b64 = json?.data?.[0]?.b64_json;
 
-    if (!contentType.startsWith('image/')) {
-      return jsonError('Response bukan gambar. Model mungkin sedang loading, coba lagi.', 500);
+    if (!b64) {
+      return jsonError('Gagal mendapatkan gambar dari HuggingFace.', 500);
     }
 
-    const arrayBuffer = await res.arrayBuffer();
-    const base64 = Buffer.from(arrayBuffer).toString('base64');
-
     return new Response(JSON.stringify({
-      image: `data:${contentType};base64,${base64}`,
+      image: `data:image/png;base64,${b64}`,
     }), {
       headers: { 'Content-Type': 'application/json' },
     });
