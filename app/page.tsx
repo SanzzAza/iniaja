@@ -472,6 +472,7 @@ export default function App() {
   const [shortcutToast, setShortcutToast] = useState<string | null>(null);
   // Track which message is currently streaming
   const [streamingIdx, setStreamingIdx] = useState<number | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   const bottomRef   = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -594,6 +595,7 @@ export default function App() {
     setChats(prev => prev.map(c =>
       c.id === chatId ? { ...c, messages: historyUpToUser } : c
     ));
+    setError(null);
     setLoading(true);
 
     const controller = new AbortController();
@@ -634,6 +636,7 @@ export default function App() {
       }
     } catch (err: any) {
       if (err.name === 'AbortError') return;
+      setError(err.message || 'Terjadi error.');
       setChats(prev => prev.map(c =>
         c.id === chatId ? { ...c, messages: [...c.messages, { role: 'assistant', content: `⚠️ ${err.message}`, timestamp: Date.now() }] } : c
       ));
@@ -664,6 +667,7 @@ export default function App() {
     const newMsgs = [...(currentChats.find(c => c.id === chatId)?.messages ?? []), userMsg];
     setChats(prev => prev.map(c => c.id === chatId ? { ...c, messages: newMsgs } : c));
     setInput('');
+    setError(null);
     setLoading(true);
 
     const controller = new AbortController();
@@ -704,6 +708,7 @@ export default function App() {
       }
     } catch (err: any) {
       if (err.name === 'AbortError') return;
+      setError(err.message || 'Terjadi error.');
       setChats(prev => prev.map(c =>
         c.id === chatId ? { ...c, messages: [...newMsgs, { role: 'assistant', content: `⚠️ ${err.message}`, timestamp: Date.now() }] } : c
       ));
@@ -739,7 +744,7 @@ export default function App() {
   const charCount = input.length;
 
   return (
-    <div className="flex h-screen overflow-hidden" style={{ background: '#0a0a0f', color: '#fff', fontFamily: "'Inter', -apple-system, sans-serif" }}>
+    <div className="flex h-dvh overflow-hidden" style={{ background: '#0a0a0f', color: '#fff', fontFamily: "'Inter', -apple-system, sans-serif" }}>
       <style>{ANIM_STYLE}</style>
 
       {/* ── Shortcut toast ── */}
@@ -978,7 +983,24 @@ export default function App() {
             </button>
           )}
 
-          <div className="max-w-[700px] mx-auto px-5 py-8">
+          <div className="max-w-[700px] mx-auto px-5 pt-4">
+            {error && (
+              <div
+                className="mb-4 flex items-start justify-between gap-3 rounded-2xl px-4 py-3 text-sm fade-in"
+                style={{ background: 'rgba(239,68,68,0.10)', border: '1px solid rgba(239,68,68,0.25)', color: 'rgba(254,202,202,0.95)' }}
+              >
+                <span>{error}</span>
+                <button
+                  onClick={() => setError(null)}
+                  className="text-xs opacity-70 hover:opacity-100"
+                >
+                  Tutup
+                </button>
+              </div>
+            )}
+          </div>
+
+          <div className="max-w-[700px] mx-auto px-5 py-4">
             {messages.length === 0 ? (
               /* ── Empty state ── */
               <div className="flex flex-col items-center justify-center min-h-[60vh] text-center">
