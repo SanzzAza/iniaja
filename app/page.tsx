@@ -1,4 +1,4 @@
-'use client';
+      'use client';
 import { useState, useRef, useEffect, useCallback } from 'react';
 
 const ANIM_STYLE = `
