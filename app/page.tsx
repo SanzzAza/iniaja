@@ -184,6 +184,12 @@ const MODELS = [
   { id: 'mistralai/mistral-small-4-119b-2603', name: 'Mistral Small 4 119B', provider: 'nvidia', tag: 'Free' },
   { id: 'nvidia/nemotron-3-super-120b-a12b', name: 'Nemotron 3 Super 120B', provider: 'nvidia', tag: 'Free' },
   { id: 'qwen/qwen3.5-122b-a10b', name: 'Qwen 3.5 122B', provider: 'nvidia', tag: 'Free' },
+  // Hugging Face Router
+  { id: 'deepseek-ai/DeepSeek-V4-Pro:novita', name: 'DeepSeek V4 Pro', provider: 'huggingface', tag: 'HF' },
+  { id: 'deepseek-ai/DeepSeek-V4-Pro:together', name: 'DeepSeek V4 Pro', provider: 'huggingface', tag: 'HF' },
+  { id: 'deepseek-ai/DeepSeek-V4-Pro:fireworks-ai', name: 'DeepSeek V4 Pro', provider: 'huggingface', tag: 'HF' },
+  { id: 'moonshotai/Kimi-K2.5:together', name: 'Kimi K2.5', provider: 'huggingface', tag: 'HF' },
+  { id: 'nvidia/Kimi-K2.6-NVFP4:novita', name: 'Kimi K2.6 NVFP4', provider: 'huggingface', tag: 'HF' },
 ];
 
 const PROVIDER_META: Record<string, { label: string; color: string; dot: string; logo: string }> = {
@@ -192,12 +198,14 @@ const PROVIDER_META: Record<string, { label: string; color: string; dot: string;
   google:     { label: 'Google Gemini', color: '#3b82f6', dot: 'bg-blue-500',    logo: 'https://logo.clearbit.com/google.com' },
   github:     { label: 'GitHub Models', color: '#a855f7', dot: 'bg-purple-500',  logo: 'https://logo.clearbit.com/github.com' },
   nvidia:     { label: 'NVIDIA NIM',    color: '#76b900', dot: 'bg-lime-500',    logo: 'https://logo.clearbit.com/nvidia.com' },
+  huggingface:{ label: 'Hugging Face',   color: '#f59e0b', dot: 'bg-yellow-500',  logo: 'https://logo.clearbit.com/huggingface.co' },
 };
 
 const TAG_STYLE: Record<string, string> = {
   Free:    'text-emerald-400 bg-emerald-950/60 border border-emerald-800/50',
   Preview: 'text-violet-400 bg-violet-950/60 border border-violet-800/50',
   Fast:    'text-amber-400 bg-amber-950/60 border border-amber-800/50',
+  HF:      'text-yellow-300 bg-yellow-950/60 border border-yellow-800/50',
 };
 
 const SUGGESTIONS = [
