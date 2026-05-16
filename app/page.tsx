@@ -76,6 +76,55 @@ const ANIM_STYLE = `
   background: linear-gradient(90deg, transparent, rgba(255,255,255,.28), transparent);
   animation: shimmerLine 2.6s ease-in-out infinite;
 }
+
+@keyframes cinematicBeam {
+  0% { transform: translateX(-35%) rotate(-8deg); opacity: .15; }
+  50% { opacity: .42; }
+  100% { transform: translateX(35%) rotate(-8deg); opacity: .15; }
+}
+@keyframes starDrift {
+  from { transform: translate3d(0,0,0); }
+  to { transform: translate3d(-90px,70px,0); }
+}
+@keyframes orbGlow {
+  0%,100% { transform: scale(1); filter: blur(0px); opacity: .8; }
+  50% { transform: scale(1.08); filter: blur(.5px); opacity: 1; }
+}
+@keyframes borderFlow {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+.cinematic-stars {
+  background-image:
+    radial-gradient(circle at 12% 22%, rgba(255,255,255,.52) 0 1px, transparent 1.5px),
+    radial-gradient(circle at 38% 18%, rgba(167,139,250,.65) 0 1px, transparent 1.7px),
+    radial-gradient(circle at 68% 35%, rgba(96,165,250,.58) 0 1px, transparent 1.5px),
+    radial-gradient(circle at 82% 72%, rgba(255,255,255,.42) 0 1px, transparent 1.5px),
+    radial-gradient(circle at 24% 78%, rgba(34,211,238,.42) 0 1px, transparent 1.5px);
+  background-size: 420px 320px;
+  animation: starDrift 38s linear infinite;
+}
+.cinematic-beam {
+  animation: cinematicBeam 9s ease-in-out infinite alternate;
+  background: linear-gradient(90deg, transparent, rgba(124,58,237,.08), rgba(34,211,238,.20), rgba(168,85,247,.12), transparent);
+}
+.cinematic-orb { animation: orbGlow 4s ease-in-out infinite; }
+.lux-border {
+  position: relative;
+}
+.lux-border::before {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  z-index: -1;
+  border-radius: inherit;
+  background: linear-gradient(115deg, rgba(124,58,237,.4), rgba(34,211,238,.24), rgba(168,85,247,.38), rgba(255,255,255,.08));
+  background-size: 280% 280%;
+  animation: borderFlow 8s ease infinite;
+  opacity: .36;
+}
+
 `;
 
 const MODELS = [
@@ -518,12 +567,19 @@ function ShortcutToast({ label }: { label: string }) {
 function AmbientBackground() {
   return (
     <div className="pointer-events-none absolute inset-0 overflow-hidden">
+      <div className="absolute inset-0" style={{ background: 'radial-gradient(circle at 50% 0%, rgba(124,58,237,.18), transparent 34%), radial-gradient(circle at 78% 18%, rgba(14,165,233,.16), transparent 28%), radial-gradient(circle at 18% 75%, rgba(168,85,247,.12), transparent 32%), #070710' }} />
       <div className="premium-grid absolute inset-0" />
       <div className="premium-noise absolute inset-0" />
-      <div className="aurora-blob absolute -top-24 left-[12%] h-72 w-72 rounded-full blur-3xl" style={{ background: 'rgba(124,58,237,0.24)' }} />
-      <div className="aurora-blob absolute top-20 right-[8%] h-80 w-80 rounded-full blur-3xl" style={{ background: 'rgba(14,165,233,0.16)', animationDelay: '-3s' }} />
-      <div className="aurora-blob absolute bottom-[-120px] left-[32%] h-96 w-96 rounded-full blur-3xl" style={{ background: 'rgba(16,185,129,0.11)', animationDelay: '-6s' }} />
-      <div className="absolute inset-x-0 top-0 h-40" style={{ background: 'linear-gradient(180deg, rgba(255,255,255,0.045), transparent)' }} />
+      <div className="cinematic-stars absolute -inset-24 opacity-70" />
+      <div className="cinematic-beam absolute left-[-18%] top-[26%] h-28 w-[145%] blur-xl" />
+      <div className="cinematic-beam absolute left-[-28%] top-[48%] h-20 w-[150%] blur-2xl" style={{ animationDelay: '-4s', opacity: .55 }} />
+      <div className="aurora-blob absolute -top-28 left-[10%] h-80 w-80 rounded-full blur-3xl" style={{ background: 'rgba(124,58,237,0.30)' }} />
+      <div className="aurora-blob absolute top-12 right-[6%] h-96 w-96 rounded-full blur-3xl" style={{ background: 'rgba(14,165,233,0.20)', animationDelay: '-3s' }} />
+      <div className="aurora-blob absolute bottom-[-150px] left-[30%] h-[30rem] w-[30rem] rounded-full blur-3xl" style={{ background: 'rgba(168,85,247,0.16)', animationDelay: '-6s' }} />
+      <div className="cinematic-orb absolute right-[7%] top-[17%] h-28 w-28 rounded-full" style={{ background: 'radial-gradient(circle at 32% 28%, rgba(255,255,255,.72), rgba(96,165,250,.60) 18%, rgba(37,99,235,.30) 45%, rgba(15,23,42,.05) 72%)', boxShadow: '0 0 70px rgba(96,165,250,.32)' }} />
+      <div className="cinematic-orb absolute left-[30%] top-[24%] h-12 w-12 rounded-full blur-[1px]" style={{ background: 'radial-gradient(circle, rgba(168,85,247,.75), rgba(76,29,149,.18) 70%)', boxShadow: '0 0 45px rgba(168,85,247,.45)', animationDelay: '-2s' }} />
+      <div className="absolute inset-x-0 top-0 h-48" style={{ background: 'linear-gradient(180deg, rgba(255,255,255,0.055), transparent)' }} />
+      <div className="absolute inset-x-0 bottom-0 h-64" style={{ background: 'linear-gradient(0deg, rgba(7,7,16,.9), transparent)' }} />
     </div>
   );
 }
@@ -819,7 +875,7 @@ export default function App() {
   const charCount = input.length;
 
   return (
-    <div className="relative flex h-dvh overflow-hidden" style={{ background: '#0a0a0f', color: '#fff', fontFamily: "'Inter', -apple-system, sans-serif" }}>
+    <div className="relative flex h-dvh overflow-hidden" style={{ background: '#070710', color: '#fff', fontFamily: "'Inter', -apple-system, sans-serif" }}>
       <style>{ANIM_STYLE}</style>
       <AmbientBackground />
 
@@ -894,8 +950,8 @@ export default function App() {
 
       {/* ── Sidebar ──────────────────────────────────────────────── */}
       <aside
-        className="flex-shrink-0 flex flex-col overflow-hidden transition-all duration-300 fixed md:relative z-20 h-full"
-        style={{ width: sidebarOpen ? 260 : 0, background: '#0f0f17', borderRight: '1px solid rgba(255,255,255,0.05)' }}
+        className="lux-border flex-shrink-0 flex flex-col overflow-hidden transition-all duration-300 fixed md:relative z-20 h-full"
+        style={{ width: sidebarOpen ? 292 : 0, background: 'rgba(8,8,18,.72)', borderRight: '1px solid rgba(255,255,255,0.07)', backdropFilter: 'blur(26px)', boxShadow: '24px 0 90px rgba(0,0,0,.28)' }}
       >
         {/* Sidebar header */}
         <div className="flex items-center justify-between p-3 flex-shrink-0" style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
@@ -1008,7 +1064,7 @@ export default function App() {
       <div className="relative z-10 flex-1 flex flex-col min-w-0 w-full">
 
         {/* Header */}
-        <header className="flex items-center justify-between px-3 py-2.5 flex-shrink-0" style={{ borderBottom: '1px solid rgba(255,255,255,0.07)', background: 'rgba(10,10,15,0.62)', backdropFilter: 'blur(24px)', boxShadow: '0 18px 80px rgba(0,0,0,0.22)' }}>
+        <header className="lux-border flex items-center justify-between px-3 py-2.5 flex-shrink-0" style={{ borderBottom: '1px solid rgba(255,255,255,0.07)', background: 'rgba(10,10,15,0.62)', backdropFilter: 'blur(24px)', boxShadow: '0 18px 80px rgba(0,0,0,0.22)' }}>
           <div className="flex items-center gap-2">
             <button onClick={() => setSidebarOpen(s => !s)} className="w-8 h-8 rounded-lg flex items-center justify-center transition-all hover:bg-white/5">
               <svg className="w-4 h-4" style={{ color: 'rgba(255,255,255,0.3)' }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
