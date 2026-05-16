@@ -951,7 +951,7 @@ export default function App() {
       {/* ── Sidebar ──────────────────────────────────────────────── */}
       <aside
         className="lux-border flex-shrink-0 flex flex-col overflow-hidden transition-all duration-300 fixed md:relative z-20 h-full"
-        style={{ width: sidebarOpen ? 292 : 0, background: 'rgba(8,8,18,.72)', borderRight: '1px solid rgba(255,255,255,0.07)', backdropFilter: 'blur(26px)', boxShadow: '24px 0 90px rgba(0,0,0,.28)' }}
+        style={{ width: sidebarOpen ? 320 : 0, background: 'rgba(8,8,18,.72)', borderRight: '1px solid rgba(255,255,255,0.07)', backdropFilter: 'blur(26px)', boxShadow: '24px 0 90px rgba(0,0,0,.28)' }}
       >
         {/* Sidebar header */}
         <div className="flex items-center justify-between p-3 flex-shrink-0" style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
@@ -961,7 +961,7 @@ export default function App() {
                 <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
               </svg>
             </div>
-            <span className="text-sm font-semibold" style={{ color: 'rgba(255,255,255,0.7)', letterSpacing: '-0.02em' }}>Iniaja AI</span>
+            <span className="text-sm font-semibold" style={{ color: 'rgba(255,255,255,0.7)', letterSpacing: '-0.02em' }}>NEXA AI</span>
           </div>
           <button
             onClick={newChat}
@@ -1115,7 +1115,7 @@ export default function App() {
             </button>
           )}
 
-          <div className="max-w-[700px] mx-auto px-5 pt-4">
+          <div className="max-w-[1080px] mx-auto px-4 md:px-6 pt-4">
             {error && (
               <div
                 className="mb-4 flex items-start justify-between gap-3 rounded-2xl px-4 py-3 text-sm fade-in"
@@ -1132,67 +1132,107 @@ export default function App() {
             )}
           </div>
 
-          <div className="max-w-[700px] mx-auto px-5 py-4">
+          <div className="max-w-[1080px] mx-auto px-4 md:px-6 py-4">
             {messages.length === 0 ? (
-              /* ── Empty state ── */
-              <div className="flex flex-col items-center justify-center min-h-[68vh] text-center">
-                <div className="relative mb-7 float-soft">
-                  <div className="absolute -inset-8 rounded-full blur-3xl" style={{ background: 'radial-gradient(circle, rgba(124,58,237,0.35), transparent 62%)' }} />
-                  <div className="orbit-spin absolute -inset-5 rounded-[2rem]" style={{ border: '1px solid rgba(139,92,246,0.16)', borderTopColor: 'rgba(255,255,255,0.20)' }} />
-                  <div className="relative w-20 h-20 rounded-[1.7rem] flex items-center justify-center" style={{ background: 'linear-gradient(135deg, rgba(124,58,237,0.28), rgba(14,165,233,0.16))', border: '1px solid rgba(255,255,255,0.14)', boxShadow: '0 24px 80px rgba(124,58,237,0.26)' }}>
-                    <svg className="w-9 h-9" style={{ color: 'rgba(255,255,255,0.92)' }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
-                    </svg>
-                  </div>
-                  <div className="absolute -bottom-1 -right-1 px-2 h-6 rounded-full border-2 flex items-center gap-1.5" style={{ background: '#10b981', borderColor: '#0a0a0f' }}>
-                    <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
-                    <span className="text-[10px] font-semibold text-white">LIVE</span>
-                  </div>
-                </div>
+              /* ── Cinematic dashboard empty state ── */
+              <div className="min-h-[78vh] py-8 md:py-10">
+                <div className="mx-auto w-full max-w-[1080px]">
+                  <div className="relative text-center px-2">
+                    <div className="absolute left-[10%] top-10 hidden h-16 w-16 rounded-full blur-[1px] md:block" style={{ background: 'radial-gradient(circle at 34% 30%, rgba(255,255,255,.45), rgba(168,85,247,.58) 24%, rgba(76,29,149,.12) 72%)', boxShadow: '0 0 58px rgba(168,85,247,.42)' }} />
+                    <div className="absolute right-[2%] top-4 hidden h-28 w-28 rounded-full md:block" style={{ background: 'radial-gradient(circle at 32% 28%, rgba(255,255,255,.65), rgba(96,165,250,.62) 20%, rgba(37,99,235,.28) 50%, rgba(15,23,42,.04) 74%)', boxShadow: '0 0 80px rgba(59,130,246,.35)' }} />
 
-                <div className="mb-3 inline-flex items-center gap-2 rounded-full px-3 py-1.5" style={{ background: 'rgba(255,255,255,0.055)', border: '1px solid rgba(255,255,255,0.08)' }}>
-                  <span className="h-1.5 w-1.5 rounded-full" style={{ background: PROVIDER_META[model.provider]?.color ?? '#8b5cf6' }} />
-                  <span className="text-[11px] font-medium" style={{ color: 'rgba(255,255,255,0.45)' }}>Powered by {PROVIDER_META[model.provider]?.label}</span>
-                </div>
-
-                <h1 className="max-w-xl text-4xl sm:text-5xl font-semibold mb-3" style={{ letterSpacing: '-0.06em', lineHeight: 1.02 }}>
-                  <span style={{ color: 'rgba(255,255,255,0.92)' }}>Build something </span>
-                  <span style={{ background: 'linear-gradient(90deg,#a78bfa,#60a5fa,#34d399)', WebkitBackgroundClip: 'text', color: 'transparent' }}>brilliant</span>
-                  <span style={{ color: 'rgba(255,255,255,0.92)' }}> today.</span>
-                </h1>
-                <p className="text-sm sm:text-base mb-7 max-w-md leading-relaxed" style={{ color: 'rgba(255,255,255,0.34)' }}>
-                  Ask anything, generate code, debug errors, or craft content with <span style={{ color: PROVIDER_META[model.provider]?.color ?? 'rgba(255,255,255,0.5)' }}>{model.name}</span>.
-                </p>
-
-                <div className="grid grid-cols-3 gap-2 mb-5 w-full max-w-md">
-                  {PROVIDER_STATS.map((item) => (
-                    <div key={item.label} className="rounded-2xl px-3 py-3" style={{ background: 'rgba(255,255,255,0.035)', border: '1px solid rgba(255,255,255,0.07)' }}>
-                      <div className="text-sm font-semibold" style={{ color: 'rgba(255,255,255,0.78)' }}>{item.value}</div>
-                      <div className="text-[10px] mt-0.5" style={{ color: 'rgba(255,255,255,0.24)' }}>{item.label}</div>
+                    <div className="mb-6 inline-flex items-center gap-2 rounded-full px-4 py-2" style={{ background: 'rgba(255,255,255,0.055)', border: '1px solid rgba(255,255,255,0.08)', boxShadow: '0 12px 50px rgba(124,58,237,.10)' }}>
+                      <span className="text-sm">✦</span>
+                      <span className="text-[12px] font-medium" style={{ color: 'rgba(255,255,255,0.62)' }}>Your AI Assistant is Ready</span>
                     </div>
-                  ))}
-                </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 w-full max-w-lg">
-                  {PREMIUM_PROMPTS.map(({ icon, title, text }) => (
-                    <button
-                      key={text}
-                      onClick={() => sendMessage(text)}
-                      className="premium-card-hover px-4 py-4 rounded-3xl text-left transition-all duration-300"
-                      style={{ background: 'rgba(255,255,255,0.035)', border: '1px solid rgba(255,255,255,0.08)', backdropFilter: 'blur(18px)' }}
-                    >
-                      <div className="flex items-start gap-3">
-                        <span className="flex h-9 w-9 items-center justify-center rounded-2xl text-base" style={{ background: 'rgba(124,58,237,0.14)', border: '1px solid rgba(139,92,246,0.16)' }}>{icon}</span>
-                        <span className="min-w-0">
-                          <span className="block text-[13px] font-semibold mb-1" style={{ color: 'rgba(255,255,255,0.75)' }}>{title}</span>
-                          <span className="block text-[12px] leading-snug" style={{ color: 'rgba(255,255,255,0.34)' }}>{text}</span>
-                        </span>
+                    <h1 className="mx-auto max-w-3xl text-[34px] sm:text-5xl md:text-6xl font-semibold" style={{ letterSpacing: '-0.065em', lineHeight: 1.02 }}>
+                      <span style={{ color: 'rgba(255,255,255,0.94)' }}>What can I help </span>
+                      <span style={{ background: 'linear-gradient(90deg,#60a5fa,#8b5cf6,#d946ef)', WebkitBackgroundClip: 'text', color: 'transparent' }}>you with today?</span>
+                    </h1>
+                    <p className="mt-4 text-sm sm:text-base" style={{ color: 'rgba(255,255,255,0.54)' }}>
+                      Powered by the best AI models. Fast, smart, and reliable.
+                    </p>
+
+                    <div className="mt-8 grid grid-cols-2 gap-3 md:grid-cols-4">
+                      {[
+                        { icon: '💻', title: 'Code', text: 'Write, debug & explain code instantly' },
+                        { icon: '🎨', title: 'Design', text: 'Create UI, logos & beautiful designs' },
+                        { icon: '🧠', title: 'Explain', text: 'Explain anything in simple terms' },
+                        { icon: '🚀', title: 'Write', text: 'Write posts, emails & marketing copy' },
+                      ].map((item) => (
+                        <button
+                          key={item.title}
+                          onClick={() => sendMessage(item.text)}
+                          className="premium-card-hover group rounded-3xl p-4 text-left transition-all duration-300"
+                          style={{ background: 'linear-gradient(180deg, rgba(255,255,255,.075), rgba(255,255,255,.035))', border: '1px solid rgba(255,255,255,.10)', boxShadow: '0 16px 70px rgba(0,0,0,.22)' }}
+                        >
+                          <div className="flex items-center justify-between gap-3">
+                            <div>
+                              <div className="mb-2 text-lg">{item.icon}</div>
+                              <div className="text-[15px] font-semibold" style={{ color: 'rgba(255,255,255,.88)' }}>{item.title}</div>
+                            </div>
+                            <div className="flex h-8 w-8 items-center justify-center rounded-2xl transition-all group-hover:translate-x-1" style={{ background: 'rgba(255,255,255,.06)', color: 'rgba(255,255,255,.56)' }}>›</div>
+                          </div>
+                          <p className="mt-2 text-[13px] leading-relaxed" style={{ color: 'rgba(255,255,255,.55)' }}>{item.text}</p>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="mt-8 flex justify-end">
+                    <div className="max-w-[560px] rounded-3xl px-5 py-4 text-left" style={{ background: 'linear-gradient(135deg, rgba(124,58,237,.95), rgba(67,56,202,.92))', border: '1px solid rgba(255,255,255,.14)', boxShadow: '0 20px 70px rgba(124,58,237,.26)' }}>
+                      <p className="text-[14px] leading-relaxed text-white">Buatkan landing page untuk AI SaaS tool</p>
+                      <div className="mt-1 text-right text-[11px] text-white/45">10:45 AM ✓✓</div>
+                    </div>
+                  </div>
+
+                  <div className="mt-4 flex gap-4">
+                    <div className="mt-5 hidden h-12 w-12 flex-shrink-0 items-center justify-center rounded-2xl md:flex" style={{ background: 'linear-gradient(135deg, rgba(124,58,237,.9), rgba(79,70,229,.8))', border: '1px solid rgba(255,255,255,.18)', boxShadow: '0 0 35px rgba(124,58,237,.45)' }}>
+                      <svg className="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
+                      </svg>
+                    </div>
+                    <div className="lux-border flex-1 rounded-[2rem] p-5 text-left" style={{ background: 'rgba(12,12,26,.72)', border: '1px solid rgba(255,255,255,.10)', backdropFilter: 'blur(24px)', boxShadow: '0 28px 120px rgba(0,0,0,.38)' }}>
+                      <div className="mb-4 flex items-center justify-between gap-4">
+                        <div className="flex items-center gap-2">
+                          <span className="font-semibold" style={{ color: 'rgba(255,255,255,.9)' }}>NEXA AI</span>
+                          <span className="rounded-full px-2 py-1 text-[10px]" style={{ background: 'rgba(118,185,0,.10)', color: '#a3e635', border: '1px solid rgba(163,230,53,.18)' }}>NVIDIA · GLM 5.1</span>
+                        </div>
+                        <div className="hidden items-center gap-3 text-white/35 sm:flex">
+                          <span>⧉</span><span>♡</span><span>☰</span>
+                        </div>
                       </div>
-                    </button>
-                  ))}
-                </div>
 
-                <div className="shimmer-line mt-8 h-px w-56" style={{ background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.16), transparent)' }} />
+                      <p className="text-[14px] leading-relaxed" style={{ color: 'rgba(255,255,255,.72)' }}>
+                        Berikut adalah contoh landing page untuk AI SaaS tool modern dan responsive.
+                      </p>
+
+                      <div className="mt-5 overflow-hidden rounded-3xl" style={{ background: '#060818', border: '1px solid rgba(255,255,255,.12)', boxShadow: 'inset 0 0 90px rgba(59,130,246,.08)' }}>
+                        <div className="flex items-center justify-between px-5 py-4 text-xs">
+                          <div className="flex items-center gap-2 font-semibold text-white"><span>✦</span> NEXA AI</div>
+                          <div className="hidden items-center gap-7 text-white/50 sm:flex"><span>Features</span><span>Pricing</span><span>Docs</span><span>Changelog</span></div>
+                          <button className="rounded-xl px-3 py-2 text-[11px] font-semibold text-white" style={{ background: 'linear-gradient(135deg,#8b5cf6,#4f46e5)' }}>Get Started</button>
+                        </div>
+                        <div className="relative px-6 pb-7 pt-5 text-center sm:px-10 sm:pb-10 sm:pt-8">
+                          <div className="absolute inset-0" style={{ background: 'radial-gradient(circle at 72% 60%, rgba(59,130,246,.28), transparent 24%), radial-gradient(circle at 35% 70%, rgba(124,58,237,.18), transparent 32%)' }} />
+                          <div className="relative mx-auto max-w-lg">
+                            <h2 className="text-3xl font-bold sm:text-5xl" style={{ letterSpacing: '-0.055em', lineHeight: 1.02 }}>
+                              <span className="text-white">Build Anything</span><br />
+                              <span style={{ background: 'linear-gradient(90deg,#fff,#8b5cf6)', WebkitBackgroundClip: 'text', color: 'transparent' }}>with AI.</span>
+                            </h2>
+                            <p className="mx-auto mt-4 max-w-sm text-xs leading-relaxed text-white/50">The next-generation AI platform for developers, designers, and innovators.</p>
+                            <div className="mt-7 flex items-center justify-center gap-3">
+                              <button className="rounded-xl px-4 py-2 text-xs font-semibold text-white" style={{ background: 'linear-gradient(135deg,#a855f7,#4f46e5)' }}>Get Started</button>
+                              <button className="rounded-xl border border-white/15 px-4 py-2 text-xs font-semibold text-white/75">View Demo</button>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="mt-3 text-right text-[11px]" style={{ color: 'rgba(255,255,255,.28)' }}>10:46 AM</div>
+                    </div>
+                  </div>
+                </div>
               </div>
             ) : (
               /* ── Messages ── */
@@ -1298,7 +1338,7 @@ export default function App() {
 
         {/* Input footer */}
         <footer className="relative z-10 px-4 pb-5 pt-2 flex-shrink-0" style={{ background: 'linear-gradient(180deg, transparent, rgba(10,10,15,0.92) 24%)' }}>
-          <div className="max-w-[700px] mx-auto">
+          <div className="max-w-[1080px] mx-auto">
             <div className="relative transition-all" style={{ background: 'rgba(19,19,30,0.78)', border: input.trim() ? '1px solid rgba(139,92,246,0.26)' : '1px solid rgba(255,255,255,0.09)', borderRadius: 24, backdropFilter: 'blur(22px)', boxShadow: input.trim() ? '0 18px 70px rgba(124,58,237,0.14)' : '0 18px 70px rgba(0,0,0,0.20)' }}>
               <textarea
                 ref={textareaRef}
