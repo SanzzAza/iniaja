@@ -5,150 +5,188 @@ export const maxDuration = 60;
 const SYSTEM_PROMPT = `
 You are a helpful AI assistant.
 Always answer clearly, honestly, and concisely.
+If the user sends an image, analyze it directly and explain what you see.
 `;
 
-const RATE_LIMIT = 20;
-const WINDOW_MS = 60 * 1000;
+type ChatMessage = {
+  role: 'system' | 'user' | 'assistant';
+  content: any;
+};
 
-const ipRequests = new Map<
-  string,
-  {
-    count: number;
-    timestamp: number;
-  }
->();
-
-function checkRateLimit(ip: string) {
-  const now = Date.now();
-  const user = ipRequests.get(ip);
-
-  if (!user) {
-    ipRequests.set(ip, {
-      count: 1,
-      timestamp: now,
-    });
-    return true;
-  }
-
-  if (now - user.timestamp > WINDOW_MS) {
-    ipRequests.set(ip, {
-      count: 1,
-      timestamp: now,
-    });
-    return true;
-  }
-
-  if (user.count >= RATE_LIMIT) {
-    return false;
-  }
-
-  user.count++;
-  return true;
+function jsonError(message: string, status = 400) {
+  return new Response(JSON.stringify({ error: message }), {
+    status,
+    headers: { 'Content-Type': 'application/json' },
+  });
 }
 
-function getIp(req: Request) {
-  return (
-    req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
-    req.headers.get('x-real-ip') ||
-    'anonymous'
-  );
+function missingEnv(name: string) {
+  return jsonError(`${name} belum diisi di environment variable.`, 500);
 }
 
-function withSystemPrompt(messages: any[]) {
-  const hasSystemPrompt = messages.some((msg) => msg.role === 'system');
-
-  if (hasSystemPrompt) {
-    return messages;
-  }
+function withSystemPrompt(messages: ChatMessage[]) {
+  const hasSystem = messages.some((msg) => msg.role === 'system');
+  if (hasSystem) return messages;
 
   return [
     {
-      role: 'system',
+      role: 'system' as const,
       content: SYSTEM_PROMPT,
     },
     ...messages,
   ];
 }
 
-function missingEnv(name: string) {
-  return new Response(
-    JSON.stringify({
-      error: `${name} belum diisi di environment variable.`,
-    }),
-    {
-      status: 500,
-      headers: {
-        'Content-Type': 'application/json',
+function attachImagesToLastUserMessage(messages: ChatMessage[], images: string[]) {
+  if (!images.length) return messages;
+
+  const finalMessages = [...messages];
+  const lastUserIndex = finalMessages.map((msg) => msg.role).lastIndexOf('user');
+
+  if (lastUserIndex === -1) return finalMessages;
+
+  const lastUser = finalMessages[lastUserIndex];
+  const textContent =
+    typeof lastUser.content === 'string'
+      ? lastUser.content
+      : 'Tolong jelaskan gambar ini.';
+
+  finalMessages[lastUserIndex] = {
+    ...lastUser,
+    content: [
+      {
+        type: 'text',
+        text: textContent,
       },
-    }
-  );
+      ...images.map((url) => ({
+        type: 'image_url',
+        image_url: {
+          url,
+        },
+      })),
+    ],
+  };
+
+  return finalMessages;
+}
+
+function streamPlainTextFromSSE(res: Response) {
+  const encoder = new TextEncoder();
+
+  const readable = new ReadableStream({
+    async start(controller) {
+      const reader = res.body!.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() ?? '';
+
+        for (const line of lines) {
+          if (!line.startsWith('data: ')) continue;
+
+          const data = line.slice(6).trim();
+          if (data === '[DONE]') continue;
+
+          try {
+            const json = JSON.parse(data);
+            const text = json.choices?.[0]?.delta?.content ?? '';
+            if (text) controller.enqueue(encoder.encode(text));
+          } catch {}
+        }
+      }
+
+      controller.close();
+    },
+  });
+
+  return new Response(readable, {
+    headers: {
+      'Content-Type': 'text/plain; charset=utf-8',
+      'Cache-Control': 'no-cache',
+    },
+  });
+}
+
+function streamPlainTextFromOpenAIStream(stream: any) {
+  const encoder = new TextEncoder();
+  let lastText = '';
+  let repeatCount = 0;
+
+  const readable = new ReadableStream({
+    async start(controller) {
+      try {
+        for await (const chunk of stream) {
+          const text = chunk.choices?.[0]?.delta?.content || '';
+
+          if (text === lastText && text.length > 10) {
+            if (++repeatCount > 5) break;
+          } else {
+            repeatCount = 0;
+          }
+
+          lastText = text;
+
+          if (text) {
+            controller.enqueue(encoder.encode(text));
+          }
+        }
+
+        controller.close();
+      } catch (err) {
+        controller.error(err);
+      }
+    },
+  });
+
+  return new Response(readable, {
+    headers: {
+      'Content-Type': 'text/plain; charset=utf-8',
+      'Cache-Control': 'no-cache',
+    },
+  });
 }
 
 export async function POST(req: Request) {
   try {
-    const { messages, model, provider } = await req.json();
+    const { messages, model, provider, images = [] } = await req.json();
 
     if (!messages || !Array.isArray(messages)) {
-      return new Response(
-        JSON.stringify({
-          error: 'Messages tidak valid.',
-        }),
-        {
-          status: 400,
-          headers: {
-            'Content-Type': 'application/json',
-          },
-        }
-      );
+      return jsonError('Messages tidak valid.', 400);
     }
 
     if (!model) {
-      return new Response(
-        JSON.stringify({
-          error: 'Model belum dipilih.',
-        }),
-        {
-          status: 400,
-          headers: {
-            'Content-Type': 'application/json',
-          },
-        }
-      );
+      return jsonError('Model belum dipilih.', 400);
     }
 
     if (!provider) {
-      return new Response(
-        JSON.stringify({
-          error: 'Provider belum dipilih.',
-        }),
-        {
-          status: 400,
-          headers: {
-            'Content-Type': 'application/json',
-          },
-        }
+      return jsonError('Provider belum dipilih.', 400);
+    }
+
+    const imageList = Array.isArray(images)
+      ? images.filter((img) => typeof img === 'string' && img.startsWith('data:image/')).slice(0, 4)
+      : [];
+
+    const hasImages = imageList.length > 0;
+
+    if (hasImages && provider === 'cerebras') {
+      return jsonError(
+        'Cerebras belum support membaca gambar. Pakai Google Gemini, OpenRouter vision model, GitHub GPT-4o, atau NVIDIA vision model.',
+        400
       );
     }
 
-    const ip = getIp(req);
+    const finalMessages = attachImagesToLastUserMessage(
+      withSystemPrompt(messages),
+      imageList
+    );
 
-    if (!checkRateLimit(ip)) {
-      return new Response(
-        JSON.stringify({
-          error: 'Terlalu banyak request. Coba lagi sebentar lagi.',
-        }),
-        {
-          status: 429,
-          headers: {
-            'Content-Type': 'application/json',
-          },
-        }
-      );
-    }
-
-    const finalMessages = withSystemPrompt(messages);
-
-    // ── Cerebras: raw fetch ───────────────────────────────────────────────
+    // ── Cerebras: raw fetch (text only) ───────────────────────────────────
     if (provider === 'cerebras') {
       if (!process.env.CEREBRAS_API_KEY) {
         return missingEnv('CEREBRAS_API_KEY');
@@ -178,70 +216,13 @@ export async function POST(req: Request) {
           errMsg = errJson?.message ?? errJson?.error?.message ?? errText;
         } catch {}
 
-        return new Response(
-          JSON.stringify({
-            error: errMsg,
-          }),
-          {
-            status: res.status,
-            headers: {
-              'Content-Type': 'application/json',
-            },
-          }
-        );
+        return jsonError(errMsg, res.status);
       }
 
-      const encoder = new TextEncoder();
-
-      const readable = new ReadableStream({
-        async start(controller) {
-          const reader = res.body!.getReader();
-          const decoder = new TextDecoder();
-          let buffer = '';
-
-          while (true) {
-            const { done, value } = await reader.read();
-
-            if (done) break;
-
-            buffer += decoder.decode(value, {
-              stream: true,
-            });
-
-            const lines = buffer.split('\n');
-            buffer = lines.pop() ?? '';
-
-            for (const line of lines) {
-              if (!line.startsWith('data: ')) continue;
-
-              const data = line.slice(6).trim();
-
-              if (data === '[DONE]') continue;
-
-              try {
-                const json = JSON.parse(data);
-                const text = json.choices?.[0]?.delta?.content ?? '';
-
-                if (text) {
-                  controller.enqueue(encoder.encode(text));
-                }
-              } catch {}
-            }
-          }
-
-          controller.close();
-        },
-      });
-
-      return new Response(readable, {
-        headers: {
-          'Content-Type': 'text/plain; charset=utf-8',
-          'Cache-Control': 'no-cache',
-        },
-      });
+      return streamPlainTextFromSSE(res);
     }
 
-    // ── Other providers: OpenAI SDK ───────────────────────────────────────
+    // ── Other providers: OpenAI SDK compatible ────────────────────────────
     let client: OpenAI;
 
     if (provider === 'google') {
@@ -285,17 +266,7 @@ export async function POST(req: Request) {
         baseURL: 'https://integrate.api.nvidia.com/v1',
       });
     } else {
-      return new Response(
-        JSON.stringify({
-          error: 'Invalid provider',
-        }),
-        {
-          status: 400,
-          headers: {
-            'Content-Type': 'application/json',
-          },
-        }
-      );
+      return jsonError('Invalid provider', 400);
     }
 
     const isGoogle = provider === 'google';
@@ -315,43 +286,7 @@ export async function POST(req: Request) {
           }),
     });
 
-    const encoder = new TextEncoder();
-
-    let lastText = '';
-    let repeatCount = 0;
-
-    const readable = new ReadableStream({
-      async start(controller) {
-        try {
-          for await (const chunk of stream) {
-            const text = chunk.choices[0]?.delta?.content || '';
-
-            if (text === lastText && text.length > 10) {
-              if (++repeatCount > 5) break;
-            } else {
-              repeatCount = 0;
-            }
-
-            lastText = text;
-
-            if (text) {
-              controller.enqueue(encoder.encode(text));
-            }
-          }
-
-          controller.close();
-        } catch (err) {
-          controller.error(err);
-        }
-      },
-    });
-
-    return new Response(readable, {
-      headers: {
-        'Content-Type': 'text/plain; charset=utf-8',
-        'Cache-Control': 'no-cache',
-      },
-    });
+    return streamPlainTextFromOpenAIStream(stream);
   } catch (error: any) {
     console.error('API Error:', error);
 
@@ -369,16 +304,6 @@ export async function POST(req: Request) {
       errorMsg = error.message;
     }
 
-    return new Response(
-      JSON.stringify({
-        error: errorMsg,
-      }),
-      {
-        status: error.status || 500,
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      }
-    );
+    return jsonError(errorMsg, error.status || 500);
   }
 }
