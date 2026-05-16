@@ -9,7 +9,7 @@ function jsonError(message: string, status = 400) {
 
 export async function POST(req: Request) {
   try {
-    const { prompt, model = 'black-forest-labs/FLUX.1-schnell' } = await req.json();
+    const { prompt } = await req.json();
 
     if (!prompt || typeof prompt !== 'string') {
       return jsonError('Prompt gambar belum diisi.', 400);
@@ -17,52 +17,40 @@ export async function POST(req: Request) {
 
     const token = process.env.HUGGINGFACE_API_KEY || process.env.HF_TOKEN;
     if (!token) {
-      return jsonError('HUGGINGFACE_API_KEY atau HF_TOKEN belum diisi di environment variable.', 500);
+      return jsonError('HF_TOKEN belum diisi di environment variable.', 500);
     }
 
-    // Use FLUX.1-schnell as fallback if sdxl-turbo is requested (it's often unavailable)
-    const actualModel = model === 'stabilityai/sdxl-turbo' 
-      ? 'black-forest-labs/FLUX.1-schnell' 
-      : model;
-
-    const res = await fetch(`https://api-inference.huggingface.co/models/${actualModel}`, {
+    // New HuggingFace Inference API format (v2)
+    const res = await fetch('https://api-inference.huggingface.co/models/black-forest-labs/FLUX.1-schnell', {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${token}`,
         'Content-Type': 'application/json',
-        Accept: 'image/jpeg',
       },
       body: JSON.stringify({
         inputs: prompt,
-        parameters: {
-          num_inference_steps: 4,
-          guidance_scale: 0,
-        },
-        options: {
-          wait_for_model: true,
-        },
       }),
     });
 
-    const contentType = res.headers.get('content-type') || '';
-
     if (!res.ok) {
-      const errText = await res.text();
-      let errMsg = `Hugging Face image error ${res.status}`;
-
+      let errMsg = `Error ${res.status}`;
       try {
-        const errJson = JSON.parse(errText);
-        errMsg = errJson?.error || errJson?.message || errMsg;
-      } catch {
-        if (errText) errMsg = errText;
-      }
-
-      return jsonError(errMsg, res.status);
+        const errText = await res.text();
+        const stripped = errText.replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim();
+        try {
+          const errJson = JSON.parse(errText);
+          errMsg = errJson?.error || errJson?.message || errMsg;
+        } catch {
+          if (stripped.length > 0 && stripped.length < 300) errMsg = stripped;
+        }
+      } catch {}
+      return jsonError(errMsg, 500);
     }
 
+    const contentType = res.headers.get('content-type') || '';
+
     if (!contentType.startsWith('image/')) {
-      const text = await res.text();
-      return jsonError(text || 'Response bukan gambar dari Hugging Face.', 500);
+      return jsonError('Response bukan gambar. Model mungkin sedang loading, coba lagi.', 500);
     }
 
     const arrayBuffer = await res.arrayBuffer();
@@ -73,6 +61,7 @@ export async function POST(req: Request) {
     }), {
       headers: { 'Content-Type': 'application/json' },
     });
+
   } catch (err: any) {
     return jsonError(err.message || 'Gagal generate gambar.', 500);
   }
