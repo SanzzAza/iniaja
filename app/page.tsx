@@ -752,6 +752,12 @@ export default function App() {
     setAttachments(prev => prev.filter((_, i) => i !== index));
   }
 
+  function getImageDataUrls(files: Attachment[]) {
+    return files
+      .filter(file => file.type.startsWith('image/') && file.dataUrl)
+      .map(file => file.dataUrl as string);
+  }
+
   // ── 🔄 Regenerate last assistant message ──
   const regenerate = useCallback(async () => {
     if (loading || !activeChat) return;
@@ -786,6 +792,7 @@ export default function App() {
           messages: historyUpToUser.map(({ role, content }) => ({ role, content })),
           model:    model.id,
           provider: model.provider,
+          images:   getImageDataUrls(historyUpToUser[lastUserIdx]?.attachments ?? []),
         }),
       });
 
@@ -865,6 +872,7 @@ export default function App() {
           messages: newMsgs.map(({ role, content }) => ({ role, content })),
           model:    model.id,
           provider: model.provider,
+          images:   getImageDataUrls(sentAttachments),
         }),
       });
 
