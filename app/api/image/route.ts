@@ -9,7 +9,7 @@ function jsonError(message: string, status = 400) {
 
 export async function POST(req: Request) {
   try {
-    const { prompt, model = 'stabilityai/sdxl-turbo' } = await req.json();
+    const { prompt, model = 'black-forest-labs/FLUX.1-schnell' } = await req.json();
 
     if (!prompt || typeof prompt !== 'string') {
       return jsonError('Prompt gambar belum diisi.', 400);
@@ -20,12 +20,17 @@ export async function POST(req: Request) {
       return jsonError('HUGGINGFACE_API_KEY atau HF_TOKEN belum diisi di environment variable.', 500);
     }
 
-    const res = await fetch(`https://api-inference.huggingface.co/models/${model}`, {
+    // Use FLUX.1-schnell as fallback if sdxl-turbo is requested (it's often unavailable)
+    const actualModel = model === 'stabilityai/sdxl-turbo' 
+      ? 'black-forest-labs/FLUX.1-schnell' 
+      : model;
+
+    const res = await fetch(`https://api-inference.huggingface.co/models/${actualModel}`, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${token}`,
         'Content-Type': 'application/json',
-        Accept: 'image/png',
+        Accept: 'image/jpeg',
       },
       body: JSON.stringify({
         inputs: prompt,
