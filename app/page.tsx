@@ -1,4 +1,4 @@
-      'use client';
+'use client';
 import { useState, useRef, useEffect, useCallback } from 'react';
 
 const ANIM_STYLE = `
@@ -29,6 +29,53 @@ const ANIM_STYLE = `
   font-size: 0.9em;
 }
 .think-pulse { animation: thinkPulse 1.8s ease infinite; }
+@keyframes auroraMove {
+  0%,100% { transform: translate3d(0,0,0) scale(1); opacity: .52; }
+  33% { transform: translate3d(34px,-26px,0) scale(1.08); opacity: .75; }
+  66% { transform: translate3d(-28px,28px,0) scale(.96); opacity: .62; }
+}
+@keyframes floatSoft {
+  0%,100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+@keyframes shimmerLine {
+  0% { transform: translateX(-120%); }
+  100% { transform: translateX(120%); }
+}
+@keyframes orbitSpin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+.aurora-blob { animation: auroraMove 10s ease-in-out infinite; }
+.float-soft { animation: floatSoft 4.5s ease-in-out infinite; }
+.orbit-spin { animation: orbitSpin 18s linear infinite; }
+.premium-grid {
+  background-image:
+    linear-gradient(rgba(255,255,255,.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,.035) 1px, transparent 1px);
+  background-size: 42px 42px;
+  mask-image: radial-gradient(circle at 50% 25%, black, transparent 68%);
+}
+.premium-noise {
+  background-image: radial-gradient(circle at 1px 1px, rgba(255,255,255,.09) 1px, transparent 0);
+  background-size: 18px 18px;
+  opacity: .07;
+}
+.premium-card-hover:hover {
+  transform: translateY(-3px);
+  background: rgba(255,255,255,.06) !important;
+  border-color: rgba(139,92,246,.32) !important;
+  box-shadow: 0 18px 60px rgba(124,58,237,.16);
+}
+.shimmer-line { overflow: hidden; position: relative; }
+.shimmer-line::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  width: 45%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,.28), transparent);
+  animation: shimmerLine 2.6s ease-in-out infinite;
+}
 `;
 
 const MODELS = [
@@ -109,6 +156,19 @@ const SUGGESTIONS = [
   { icon: '⌘', text: 'Write a Python web scraper' },
   { icon: '◈', text: 'Explain quantum computing' },
   { icon: '◇', text: 'Debug my JavaScript code' },
+];
+
+const PREMIUM_PROMPTS = [
+  { icon: '⚡', title: 'Build faster', text: 'Buatkan struktur SaaS Next.js yang clean' },
+  { icon: '🧩', title: 'Fix code', text: 'Cari bug dan rapikan kode ini' },
+  { icon: '🎨', title: 'Design UI', text: 'Buat UI landing page modern dan premium' },
+  { icon: '🚀', title: 'Launch copy', text: 'Buat copywriting promosi yang catchy' },
+];
+
+const PROVIDER_STATS = [
+  { label: 'Providers', value: '5+' },
+  { label: 'Models', value: `${MODELS.length}` },
+  { label: 'Streaming', value: 'Live' },
 ];
 
 const LS_KEY_CHATS    = 'iniaja_chats';
@@ -453,6 +513,21 @@ function ShortcutToast({ label }: { label: string }) {
   );
 }
 
+
+// ── Premium ambient background ───────────────────────────────────────────────
+function AmbientBackground() {
+  return (
+    <div className="pointer-events-none absolute inset-0 overflow-hidden">
+      <div className="premium-grid absolute inset-0" />
+      <div className="premium-noise absolute inset-0" />
+      <div className="aurora-blob absolute -top-24 left-[12%] h-72 w-72 rounded-full blur-3xl" style={{ background: 'rgba(124,58,237,0.24)' }} />
+      <div className="aurora-blob absolute top-20 right-[8%] h-80 w-80 rounded-full blur-3xl" style={{ background: 'rgba(14,165,233,0.16)', animationDelay: '-3s' }} />
+      <div className="aurora-blob absolute bottom-[-120px] left-[32%] h-96 w-96 rounded-full blur-3xl" style={{ background: 'rgba(16,185,129,0.11)', animationDelay: '-6s' }} />
+      <div className="absolute inset-x-0 top-0 h-40" style={{ background: 'linear-gradient(180deg, rgba(255,255,255,0.045), transparent)' }} />
+    </div>
+  );
+}
+
 // ── Main app ──────────────────────────────────────────────────────────────────
 export default function App() {
   const [chats, setChats]               = useState<Chat[]>(() => loadChats());
@@ -744,8 +819,9 @@ export default function App() {
   const charCount = input.length;
 
   return (
-    <div className="flex h-dvh overflow-hidden" style={{ background: '#0a0a0f', color: '#fff', fontFamily: "'Inter', -apple-system, sans-serif" }}>
+    <div className="relative flex h-dvh overflow-hidden" style={{ background: '#0a0a0f', color: '#fff', fontFamily: "'Inter', -apple-system, sans-serif" }}>
       <style>{ANIM_STYLE}</style>
+      <AmbientBackground />
 
       {/* ── Shortcut toast ── */}
       {shortcutToast && <ShortcutToast label={shortcutToast} />}
@@ -929,10 +1005,10 @@ export default function App() {
       </aside>
 
       {/* ── Main ─────────────────────────────────────────────────── */}
-      <div className="flex-1 flex flex-col min-w-0 w-full">
+      <div className="relative z-10 flex-1 flex flex-col min-w-0 w-full">
 
         {/* Header */}
-        <header className="flex items-center justify-between px-3 py-2.5 flex-shrink-0" style={{ borderBottom: '1px solid rgba(255,255,255,0.05)', background: 'rgba(10,10,15,0.85)', backdropFilter: 'blur(20px)' }}>
+        <header className="flex items-center justify-between px-3 py-2.5 flex-shrink-0" style={{ borderBottom: '1px solid rgba(255,255,255,0.07)', background: 'rgba(10,10,15,0.62)', backdropFilter: 'blur(24px)', boxShadow: '0 18px 80px rgba(0,0,0,0.22)' }}>
           <div className="flex items-center gap-2">
             <button onClick={() => setSidebarOpen(s => !s)} className="w-8 h-8 rounded-lg flex items-center justify-center transition-all hover:bg-white/5">
               <svg className="w-4 h-4" style={{ color: 'rgba(255,255,255,0.3)' }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -1003,34 +1079,64 @@ export default function App() {
           <div className="max-w-[700px] mx-auto px-5 py-4">
             {messages.length === 0 ? (
               /* ── Empty state ── */
-              <div className="flex flex-col items-center justify-center min-h-[60vh] text-center">
-                <div className="relative mb-7">
-                  <div className="w-16 h-16 rounded-2xl flex items-center justify-center" style={{ background: 'linear-gradient(135deg, rgba(124,58,237,0.15), rgba(79,70,229,0.15))', border: '1px solid rgba(124,58,237,0.2)' }}>
-                    <svg className="w-8 h-8" style={{ color: 'rgba(139,92,246,0.9)' }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+              <div className="flex flex-col items-center justify-center min-h-[68vh] text-center">
+                <div className="relative mb-7 float-soft">
+                  <div className="absolute -inset-8 rounded-full blur-3xl" style={{ background: 'radial-gradient(circle, rgba(124,58,237,0.35), transparent 62%)' }} />
+                  <div className="orbit-spin absolute -inset-5 rounded-[2rem]" style={{ border: '1px solid rgba(139,92,246,0.16)', borderTopColor: 'rgba(255,255,255,0.20)' }} />
+                  <div className="relative w-20 h-20 rounded-[1.7rem] flex items-center justify-center" style={{ background: 'linear-gradient(135deg, rgba(124,58,237,0.28), rgba(14,165,233,0.16))', border: '1px solid rgba(255,255,255,0.14)', boxShadow: '0 24px 80px rgba(124,58,237,0.26)' }}>
+                    <svg className="w-9 h-9" style={{ color: 'rgba(255,255,255,0.92)' }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
                     </svg>
                   </div>
-                  <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full border-2 flex items-center justify-center" style={{ background: '#10b981', borderColor: '#0a0a0f' }}>
-                    <div className="w-1.5 h-1.5 rounded-full bg-white" />
+                  <div className="absolute -bottom-1 -right-1 px-2 h-6 rounded-full border-2 flex items-center gap-1.5" style={{ background: '#10b981', borderColor: '#0a0a0f' }}>
+                    <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
+                    <span className="text-[10px] font-semibold text-white">LIVE</span>
                   </div>
                 </div>
-                <h1 className="text-2xl font-semibold mb-1.5" style={{ color: 'rgba(255,255,255,0.8)', letterSpacing: '-0.03em' }}>What can I help with?</h1>
-                <p className="text-sm mb-9" style={{ color: 'rgba(255,255,255,0.25)' }}>
-                  Using <span style={{ color: PROVIDER_META[model.provider]?.color ?? 'rgba(255,255,255,0.4)' }}>{model.name}</span>
+
+                <div className="mb-3 inline-flex items-center gap-2 rounded-full px-3 py-1.5" style={{ background: 'rgba(255,255,255,0.055)', border: '1px solid rgba(255,255,255,0.08)' }}>
+                  <span className="h-1.5 w-1.5 rounded-full" style={{ background: PROVIDER_META[model.provider]?.color ?? '#8b5cf6' }} />
+                  <span className="text-[11px] font-medium" style={{ color: 'rgba(255,255,255,0.45)' }}>Powered by {PROVIDER_META[model.provider]?.label}</span>
+                </div>
+
+                <h1 className="max-w-xl text-4xl sm:text-5xl font-semibold mb-3" style={{ letterSpacing: '-0.06em', lineHeight: 1.02 }}>
+                  <span style={{ color: 'rgba(255,255,255,0.92)' }}>Build something </span>
+                  <span style={{ background: 'linear-gradient(90deg,#a78bfa,#60a5fa,#34d399)', WebkitBackgroundClip: 'text', color: 'transparent' }}>brilliant</span>
+                  <span style={{ color: 'rgba(255,255,255,0.92)' }}> today.</span>
+                </h1>
+                <p className="text-sm sm:text-base mb-7 max-w-md leading-relaxed" style={{ color: 'rgba(255,255,255,0.34)' }}>
+                  Ask anything, generate code, debug errors, or craft content with <span style={{ color: PROVIDER_META[model.provider]?.color ?? 'rgba(255,255,255,0.5)' }}>{model.name}</span>.
                 </p>
-                <div className="grid grid-cols-2 gap-2 w-full max-w-sm">
-                  {SUGGESTIONS.map(({ icon, text }) => (
+
+                <div className="grid grid-cols-3 gap-2 mb-5 w-full max-w-md">
+                  {PROVIDER_STATS.map((item) => (
+                    <div key={item.label} className="rounded-2xl px-3 py-3" style={{ background: 'rgba(255,255,255,0.035)', border: '1px solid rgba(255,255,255,0.07)' }}>
+                      <div className="text-sm font-semibold" style={{ color: 'rgba(255,255,255,0.78)' }}>{item.value}</div>
+                      <div className="text-[10px] mt-0.5" style={{ color: 'rgba(255,255,255,0.24)' }}>{item.label}</div>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 w-full max-w-lg">
+                  {PREMIUM_PROMPTS.map(({ icon, title, text }) => (
                     <button
                       key={text}
                       onClick={() => sendMessage(text)}
-                      className="px-4 py-3.5 rounded-2xl text-left transition-all hover:border-white/15"
-                      style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)' }}
+                      className="premium-card-hover px-4 py-4 rounded-3xl text-left transition-all duration-300"
+                      style={{ background: 'rgba(255,255,255,0.035)', border: '1px solid rgba(255,255,255,0.08)', backdropFilter: 'blur(18px)' }}
                     >
-                      <span className="block text-sm mb-1" style={{ color: 'rgba(255,255,255,0.2)' }}>{icon}</span>
-                      <span className="block text-[13px] leading-snug" style={{ color: 'rgba(255,255,255,0.45)' }}>{text}</span>
+                      <div className="flex items-start gap-3">
+                        <span className="flex h-9 w-9 items-center justify-center rounded-2xl text-base" style={{ background: 'rgba(124,58,237,0.14)', border: '1px solid rgba(139,92,246,0.16)' }}>{icon}</span>
+                        <span className="min-w-0">
+                          <span className="block text-[13px] font-semibold mb-1" style={{ color: 'rgba(255,255,255,0.75)' }}>{title}</span>
+                          <span className="block text-[12px] leading-snug" style={{ color: 'rgba(255,255,255,0.34)' }}>{text}</span>
+                        </span>
+                      </div>
                     </button>
                   ))}
                 </div>
+
+                <div className="shimmer-line mt-8 h-px w-56" style={{ background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.16), transparent)' }} />
               </div>
             ) : (
               /* ── Messages ── */
@@ -1135,9 +1241,9 @@ export default function App() {
         </main>
 
         {/* Input footer */}
-        <footer className="px-4 pb-5 pt-2 flex-shrink-0" style={{ background: '#0a0a0f' }}>
+        <footer className="relative z-10 px-4 pb-5 pt-2 flex-shrink-0" style={{ background: 'linear-gradient(180deg, transparent, rgba(10,10,15,0.92) 24%)' }}>
           <div className="max-w-[700px] mx-auto">
-            <div className="relative transition-all" style={{ background: '#13131e', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 20 }}>
+            <div className="relative transition-all" style={{ background: 'rgba(19,19,30,0.78)', border: input.trim() ? '1px solid rgba(139,92,246,0.26)' : '1px solid rgba(255,255,255,0.09)', borderRadius: 24, backdropFilter: 'blur(22px)', boxShadow: input.trim() ? '0 18px 70px rgba(124,58,237,0.14)' : '0 18px 70px rgba(0,0,0,0.20)' }}>
               <textarea
                 ref={textareaRef}
                 value={input}
