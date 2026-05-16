@@ -157,7 +157,6 @@ const MODELS = [
   { id: 'meta/llama-4-maverick-17b-128e-instruct-fp8', name: 'Llama 4 Maverick', provider: 'github', tag: 'Free' },
   { id: 'meta/llama-4-scout-17b-16e-instruct', name: 'Llama 4 Scout', provider: 'github', tag: 'Free' },
   { id: 'meta/meta-llama-3.1-405b-instruct', name: 'Llama 3.1 405B', provider: 'github', tag: 'Free' },
-  { id: 'meta/meta-llama-3.1-8b-instruct', name: 'Llama 3.1 8B', provider: 'github', tag: 'Fast' },
   { id: 'xai/grok-3', name: 'Grok 3', provider: 'github', tag: 'Free' },
   { id: 'xai/grok-3-mini', name: 'Grok 3 Mini', provider: 'github', tag: 'Fast' },
   { id: 'microsoft/mai-ds-r1', name: 'MAI-DS R1', provider: 'github', tag: 'Free' },
@@ -172,7 +171,6 @@ const MODELS = [
   { id: 'cohere/cohere-command-r-plus-08-2024', name: 'Command R+', provider: 'github', tag: 'Free' },
   { id: 'ai21-labs/ai21-jamba-1.5-large', name: 'Jamba 1.5 Large', provider: 'github', tag: 'Free' },
   // NVIDIA NIM
-  { id: 'moonshotai/kimi-k2.6', name: 'Kimi K2.6', provider: 'nvidia', tag: 'Free' },
   { id: 'mistralai/mistral-medium-3.5-128b', name: 'Mistral Medium 3.5', provider: 'nvidia', tag: 'Free' },
   { id: 'nvidia/nemotron-3-nano-omni-30b-a3b-reasoning', name: 'Nemotron Nano Omni 30B', provider: 'nvidia', tag: 'Free' },
   { id: 'deepseek-ai/deepseek-v4-flash', name: 'DeepSeek V4 Flash', provider: 'nvidia', tag: 'Free' },
@@ -180,14 +178,15 @@ const MODELS = [
   { id: 'z-ai/glm-5.1', name: 'GLM 5.1', provider: 'nvidia', tag: 'Free' },
   { id: 'nvidia/ising-calibration-1-35b-a3b', name: 'Ising Calibration 35B', provider: 'nvidia', tag: 'Free' },
   { id: 'minimaxai/minimax-m2.7', name: 'MiniMax M2.7', provider: 'nvidia', tag: 'Free' },
-  { id: 'google/gemma-4-31b-it', name: 'Gemma 4 31B', provider: 'nvidia', tag: 'Free' },
   { id: 'mistralai/mistral-small-4-119b-2603', name: 'Mistral Small 4 119B', provider: 'nvidia', tag: 'Free' },
   { id: 'nvidia/nemotron-3-super-120b-a12b', name: 'Nemotron 3 Super 120B', provider: 'nvidia', tag: 'Free' },
   { id: 'qwen/qwen3.5-122b-a10b', name: 'Qwen 3.5 122B', provider: 'nvidia', tag: 'Free' },
   // Hugging Face Router
   { id: 'deepseek-ai/DeepSeek-V4-Pro:novita', name: 'DeepSeek V4 Pro', provider: 'huggingface', tag: 'HF' },
-  { id: 'moonshotai/Kimi-K2.5:together', name: 'Kimi K2.5', provider: 'huggingface', tag: 'HF' },
-  { id: 'nvidia/Kimi-K2.6-NVFP4:novita', name: 'Kimi K2.6 NVFP4', provider: 'huggingface', tag: 'HF' },
+  { id: 'moonshotai/Kimi-K2.6', name: 'Kimi K2.6', provider: 'huggingface', tag: 'HF' },
+  { id: 'Qwen/Qwen3.6-35B-A3B', name: 'Qwen3.6 35B', provider: 'huggingface', tag: 'HF' },
+  { id: 'meta-llama/Llama-3.1-8B-Instruct', name: 'Llama 3.1 8B', provider: 'huggingface', tag: 'HF' },
+  { id: 'google/gemma-4-31b-it', name: 'Gemma 4 31B', provider: 'huggingface', tag: 'HF' },
 ];
 
 const PROVIDER_META: Record<string, { label: string; color: string; dot: string; logo: string }> = {
