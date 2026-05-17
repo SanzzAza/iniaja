@@ -816,12 +816,12 @@ export default function App() {
       body: JSON.stringify({
         prompt,
         image,
-        duration: 5,
+        duration: '5',
       }),
     });
 
     const data = await res.json();
-    if (!res.ok) throw new Error(data.error || 'Gagal generate video.');
+    if (!res.ok) throw new Error(data.error || data?.detail?.message || JSON.stringify(data?.detail || data) || 'Gagal generate video.');
 
     const aiMsg: Message = {
       role: 'assistant',
