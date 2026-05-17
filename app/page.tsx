@@ -187,7 +187,8 @@ const MODELS = [
   { id: 'Qwen/Qwen3.6-35B-A3B', name: 'Qwen3.6 35B', provider: 'huggingface', tag: 'HF' },
   { id: 'meta-llama/Llama-3.1-8B-Instruct', name: 'Llama 3.1 8B', provider: 'huggingface', tag: 'HF' },
   { id: 'google/gemma-4-31b-it', name: 'Gemma 4 31B', provider: 'huggingface', tag: 'HF' },
-  { id: 'stabilityai/sdxl-turbo', name: 'SDXL Turbo', provider: 'image', tag: 'Image' },
+  { id: 'magnific/flux-dev', name: 'Magnific Flux Dev', provider: 'image', tag: 'Image' },
+  { id: 'magnific/kling-v2-6-pro', name: 'Kling 2.6 Pro Video', provider: 'video', tag: 'Video' },
 ];
 
 const PROVIDER_META: Record<string, { label: string; color: string; dot: string; logo: string }> = {
@@ -198,6 +199,7 @@ const PROVIDER_META: Record<string, { label: string; color: string; dot: string;
   nvidia:     { label: 'NVIDIA NIM',    color: '#76b900', dot: 'bg-lime-500',    logo: 'https://logo.clearbit.com/nvidia.com' },
   huggingface:{ label: 'Hugging Face',   color: '#f59e0b', dot: 'bg-yellow-500',  logo: 'https://logo.clearbit.com/huggingface.co' },
   image:      { label: 'Image AI',       color: '#ec4899', dot: 'bg-pink-500',    logo: 'https://logo.clearbit.com/huggingface.co' },
+  video:      { label: 'Video AI',       color: '#22d3ee', dot: 'bg-cyan-500',    logo: 'https://logo.clearbit.com/klingai.com' },
 };
 
 const TAG_STYLE: Record<string, string> = {
@@ -232,7 +234,7 @@ const LS_KEY_CHATS    = 'iniaja_chats';
 const LS_KEY_MODEL_ID = 'iniaja_model_id';
 
 type Attachment = { name: string; size: number; type: string; url?: string; dataUrl?: string };
-type Message = { role: 'user' | 'assistant'; content: string; timestamp: number; attachments?: Attachment[]; generatedImage?: string };
+type Message = { role: 'user' | 'assistant'; content: string; timestamp: number; attachments?: Attachment[]; generatedImage?: string; generatedVideo?: string };
 type Chat    = { id: string; title: string; messages: Message[]; model: typeof MODELS[0] };
 
 // ── localStorage helpers ──────────────────────────────────────────────────────
@@ -766,6 +768,16 @@ export default function App() {
       .map(file => file.dataUrl as string);
   }
 
+  function findLastImageForVideo(messages: Message[]) {
+    for (let i = messages.length - 1; i >= 0; i--) {
+      const msg = messages[i];
+      if (msg.generatedImage) return msg.generatedImage;
+      const attachedImage = msg.attachments?.find(file => file.type.startsWith('image/') && file.dataUrl);
+      if (attachedImage?.dataUrl) return attachedImage.dataUrl;
+    }
+    return '';
+  }
+
   async function generateImage(prompt: string, chatId: string, baseMessages: Message[]) {
     const res = await fetch('/api/image', {
       method: 'POST',
@@ -784,6 +796,39 @@ export default function App() {
       content: `✅ Gambar berhasil dibuat dengan ${model.name}.`,
       timestamp: Date.now(),
       generatedImage: data.image,
+    };
+
+    setChats(prev => prev.map(c =>
+      c.id === chatId ? { ...c, messages: [...baseMessages, aiMsg] } : c
+    ));
+  }
+
+  async function generateVideo(prompt: string, chatId: string, baseMessages: Message[]) {
+    const image = findLastImageForVideo(baseMessages);
+
+    if (!image) {
+      throw new Error('Untuk video Kling, upload gambar dulu atau generate image dulu, baru klik Video.');
+    }
+
+    const res = await fetch('/api/video', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        prompt,
+        image,
+        duration: 5,
+      }),
+    });
+
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Gagal generate video.');
+
+    const aiMsg: Message = {
+      role: 'assistant',
+      content: `✅ Video berhasil dibuat dengan ${model.name}.`,
+      timestamp: Date.now(),
+      generatedVideo: data.video,
+      generatedImage: image,
     };
 
     setChats(prev => prev.map(c =>
@@ -813,10 +858,11 @@ export default function App() {
     setError(null);
     setLoading(true);
 
-    if (model.provider === 'image') {
+    if (model.provider === 'image' || model.provider === 'video') {
       try {
         const prompt = historyUpToUser[lastUserIdx]?.content || '';
-        await generateImage(prompt, chatId, historyUpToUser);
+        if (model.provider === 'video') await generateVideo(prompt, chatId, historyUpToUser);
+        else await generateImage(prompt, chatId, historyUpToUser);
       } catch (err: any) {
         setError(err.message || 'Terjadi error.');
         setChats(prev => prev.map(c =>
@@ -910,9 +956,10 @@ export default function App() {
     setError(null);
     setLoading(true);
 
-    if (model.provider === 'image') {
+    if (model.provider === 'image' || model.provider === 'video') {
       try {
-        await generateImage(finalText, chatId, newMsgs);
+        if (model.provider === 'video') await generateVideo(finalText, chatId, newMsgs);
+        else await generateImage(finalText, chatId, newMsgs);
       } catch (err: any) {
         setError(err.message || 'Terjadi error.');
         setChats(prev => prev.map(c =>
@@ -1442,7 +1489,17 @@ export default function App() {
                                 <img src={m.generatedImage} alt="Generated image" className="w-full max-w-xl object-contain" />
                                 <div className="flex items-center justify-between gap-2 px-3 py-2 text-[11px] text-white/45">
                                   <span>Generated image</span>
-                                  <a href={m.generatedImage} download="sdxl-image.png" className="text-pink-300 hover:text-pink-200">Download</a>
+                                  <a href={m.generatedImage} download="magnific-flux-dev.png" className="text-pink-300 hover:text-pink-200">Download</a>
+                                </div>
+                              </div>
+                            )}
+
+                            {m.generatedVideo && (
+                              <div className="mt-3 overflow-hidden rounded-3xl border border-cyan-400/20 bg-black/30">
+                                <video src={m.generatedVideo} controls playsInline className="w-full max-w-xl bg-black" />
+                                <div className="flex items-center justify-between gap-2 px-3 py-2 text-[11px] text-white/45">
+                                  <span>Generated video</span>
+                                  <a href={m.generatedVideo} download="kling-video.mp4" className="text-cyan-300 hover:text-cyan-200">Download</a>
                                 </div>
                               </div>
                             )}
@@ -1535,7 +1592,7 @@ export default function App() {
                 onChange={e => setInput(e.target.value)}
                 onKeyDown={handleKey}
                 disabled={loading}
-                placeholder={model.provider === 'image' ? 'Describe image yang mau dibuat...' : 'Ask anything...'}
+                placeholder={model.provider === 'image' ? 'Describe image yang mau dibuat...' : model.provider === 'video' ? 'Describe gerakan video Kling dari gambar...' : 'Ask anything...'}
                 rows={1}
                 className="w-full resize-none bg-transparent text-[15px] leading-relaxed outline-none disabled:opacity-40 sm:text-[15.5px]"
                 style={{
@@ -1605,6 +1662,24 @@ export default function App() {
                     <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M4 16l4.6-4.6a2 2 0 012.8 0L16 16m-2-2l1.6-1.6a2 2 0 012.8 0L20 14m-16 6h16a2 2 0 002-2V6a2 2 0 00-2-2H4a2 2 0 00-2 2v12a2 2 0 002 2z" />
                     </svg>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const vidModel = MODELS.find(m => m.provider === 'video');
+                      if (vidModel) { setModel(vidModel); saveModelId(vidModel.id); }
+                      setInput(prev => prev || 'cinematic slow zoom, natural motion, smooth camera movement');
+                      textareaRef.current?.focus();
+                    }}
+                    className="hidden h-10 items-center gap-2 rounded-2xl px-3 text-[13px] transition-all hover:scale-[1.02] sm:flex"
+                    style={{ background: model.provider === 'video' ? 'rgba(34,211,238,.16)' : 'rgba(255,255,255,.045)', border: model.provider === 'video' ? '1px solid rgba(34,211,238,.28)' : '1px solid rgba(255,255,255,.08)', color: model.provider === 'video' ? 'rgba(165,243,252,.95)' : 'rgba(255,255,255,.72)' }}
+                    title="Video"
+                  >
+                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M15 10l4.55-2.28A1 1 0 0121 8.62v6.76a1 1 0 01-1.45.9L15 14M5 6h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2z" />
+                    </svg>
+                    Video
                   </button>
                 </div>
 
